@@ -1,0 +1,44 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("../src/core/simplex") as simplex
+import("../src/core/rgb_hsv") as hsv
+import("../src/render/swatch") as swatch
+import("../render/ppm") as ppm
+
+fn hue_representatives(k) {
+  let pts = simplex.enumerate_simplex_boundary(k) in
+  let seen = {} in
+  let out = [] in
+  let i = 0 in
+  while i < list.len(pts) {
+    let c = list.get(pts, i) in
+    let rgb = simplex.color_i_to_rgb_f(c, k) in
+    let h = cast.int(hsv.rgb_to_hsv(rgb).h + 0.5) in
+    let key = str.from_int(h) in
+    if !rec.has(seen, key) then
+      seen = rec.set(seen, key, true)
+      out = list.append(out, rgb)
+    else
+      0
+    
+    i = i + 1
+  }
+  out
+}
+
+fn write_k(k) {
+  let reps = hue_representatives(k) in
+  let img = swatch.swatch_row(reps, 40, 40) in
+  let out = "out/K" + str.from_int(k) + "_swatches_simplex.ppm" in
+  ppm.save_ppm(img, out)
+  io.println("wrote " + out)
+}
+
+fn main() {
+  write_k(3)
+  write_k(4)
+  write_k(5)
+}
+
+main()

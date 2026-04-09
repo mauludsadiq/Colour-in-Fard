@@ -1,0 +1,31 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("../src/core/cube") as cube
+import("../src/core/rgb_hsv") as hsv
+import("../src/core/nearest") as nearest
+import("../src/render/strip") as strip
+import("../render/ppm") as ppm
+
+fn sample_fn_builder(k, palette) {
+  fn sample(x, width) {
+    let h = cast.float(x) * 360.0 / cast.float(width) in
+    let target = hsv.hsv_to_rgb(h, 1.0, 1.0) in
+    let c = nearest.nearest_palette_color_rgbf(target, palette, k, cube.color_i_to_rgb_f) in
+    cube.color_i_to_rgb_f(c, k)
+  }
+  sample
+}
+
+fn main() {
+  let args = cli.args() in
+  let k = if list.len(args) > 1 then cast.int(list.get(args, 1)) else 20 in
+  let palette = cube.enumerate_cube_palette(k) in
+  let sampler = sample_fn_builder(k, palette) in
+  let img = strip.horizontal_strip(720, 40, sampler) in
+  let out = "out/K" + str.from_int(k) + "_hue_strip_cube.ppm" in
+  ppm.save_ppm(img, out)
+  io.println("wrote " + out)
+}
+
+main()

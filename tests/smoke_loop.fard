@@ -1,0 +1,8 @@
+fn step(s) { { i: s.i + 1, acc: s.acc + s.i } }
+fn cond(s) { s.i < 5 }
+
+test "while returns wrapper with value field" {
+  let s0 = { i: 0, acc: 0 } in
+  let w = while s0 cond step in
+  w.value.i == 5 && w.value.acc == 10
+}

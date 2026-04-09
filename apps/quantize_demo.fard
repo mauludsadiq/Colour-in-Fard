@@ -1,0 +1,35 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/json") as json
+import("../core/types") as t
+import("../src/core/quantizer_simplex") as qs
+
+fn main() {
+  let args = cli.args() in
+  let k = if list.len(args) > 1 then cast.int(list.get(args, 1)) else 5 in
+  let q = qs.new(k) in
+
+  io.println("QuantizerSimplex with K = " + str.from_int(k))
+
+  let ok = qs.check_idempotence(q, 1000, 0.000001) in
+  io.println("Idempotence check: " + str.from_bool(ok))
+
+  let samples = [
+    t.rgb_f(1.0, 0.0, 0.0),
+    t.rgb_f(0.0, 1.0, 0.0),
+    t.rgb_f(0.0, 0.0, 1.0),
+    t.rgb_f(0.8, 0.3, 0.1),
+    t.rgb_f(0.2, 0.7, 0.5)
+  ] in
+
+  let i = 0 in
+  while i < list.len(samples) {
+    let rgb = list.get(samples, i) in
+    let p = qs.project_rgb(q, rgb) in
+    io.println("rgb=" + json.encode(rgb) + " projected=" + json.encode(p))
+    i = i + 1
+  }
+}
+
+main()

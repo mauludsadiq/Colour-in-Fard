@@ -1,0 +1,77 @@
+import("std/list") as list
+import("../core/types") as t
+
+fn simplex_state_new(k) {
+  { k: k, r: 0, g: 0, b: 0, out: [], done: false }
+}
+
+fn simplex_palette_cond(s) {
+  !s.done
+}
+
+fn simplex_palette_step(s) {
+  let keep = s.r + s.g + s.b <= s.k in
+  let out1 = if keep then list.append(s.out, t.color_i(s.r, s.g, s.b)) else s.out in
+
+  let b1 = s.b + 1 in
+  if b1 <= s.k then
+    { k: s.k, r: s.r, g: s.g, b: b1, out: out1, done: false }
+  else
+    let g1 = s.g + 1 in
+    if g1 <= s.k then
+      { k: s.k, r: s.r, g: g1, b: 0, out: out1, done: false }
+    else
+      let r1 = s.r + 1 in
+      if r1 <= s.k then
+        { k: s.k, r: r1, g: 0, b: 0, out: out1, done: false }
+      else
+        { k: s.k, r: s.r, g: s.g, b: s.b, out: out1, done: true }
+}
+
+fn enumerate_simplex_palette(k) {
+  let w = while simplex_state_new(k) simplex_palette_cond simplex_palette_step in
+  w.value.out
+}
+
+fn simplex_boundary_state_new(k) {
+  { k: k, r: 0, g: 0, out: [], done: false }
+}
+
+fn simplex_boundary_cond(s) {
+  !s.done
+}
+
+fn simplex_boundary_step(s) {
+  let b = s.k - s.r - s.g in
+  let out1 =
+    if b >= 0 && s.r + s.g + b == s.k then
+      list.append(s.out, t.color_i(s.r, s.g, b))
+    else
+      s.out
+  in
+
+  let g1 = s.g + 1 in
+  if g1 <= s.k then
+    { k: s.k, r: s.r, g: g1, out: out1, done: false }
+  else
+    let r1 = s.r + 1 in
+    if r1 <= s.k then
+      { k: s.k, r: r1, g: 0, out: out1, done: false }
+    else
+      { k: s.k, r: s.r, g: s.g, out: out1, done: true }
+}
+
+fn enumerate_simplex_boundary(k) {
+  let w = while simplex_boundary_state_new(k) simplex_boundary_cond simplex_boundary_step in
+  w.value.out
+}
+
+fn color_i_to_rgb_f(c, k) {
+  t.rgb_f(c.r / k, c.g / k, c.b / k)
+}
+
+{
+  enumerate_simplex_palette: enumerate_simplex_palette,
+  enumerate_simplex_boundary: enumerate_simplex_boundary,
+  color_i_to_rgb_f: color_i_to_rgb_f
+}

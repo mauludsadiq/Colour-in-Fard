@@ -1,0 +1,18 @@
+import("std/list") as list
+import("../render/ppm") as ppm
+
+fn swatch_row(colors, cell_w, cell_h) {
+  let n = list.len(colors) in
+  let width = n * cell_w in
+  let height = cell_h in
+  let img = ppm.blank(width, height, { r: 0.0, g: 0.0, b: 0.0 }) in
+
+  let i = 0 in
+  while i < n {
+    let rgb = list.get(colors, i) in
+    img = ppm.fill_rect(img, i * cell_w, 0, cell_w, cell_h, rgb)
+    i = i + 1
+  }
+
+  img
+}

@@ -1,0 +1,21 @@
+import("std/list") as list
+import("std/str") as str
+import("../src/render/ppm") as ppm
+
+test "blank image has correct dimensions and pixel count" {
+  let img = ppm.blank(3, 2, { r: 0.0, g: 0.0, b: 0.0 }) in
+  img.width == 3 && img.height == 2 && list.len(img.pixels) == 6
+}
+
+test "fill_rect writes expected pixel" {
+  let img0 = ppm.blank(4, 4, { r: 0.0, g: 0.0, b: 0.0 }) in
+  let img1 = ppm.fill_rect(img0, 1, 1, 2, 2, { r: 1.0, g: 0.0, b: 0.0 }) in
+  let p = list.get(img1.pixels, 1 + 1 * img1.width) in
+  p.r == 1.0 && p.g == 0.0 && p.b == 0.0
+}
+
+test "ppm header starts with P3" {
+  let img = ppm.blank(1, 1, { r: 1.0, g: 0.0, b: 0.0 }) in
+  let s = ppm.encode_ascii_ppm(img) in
+  str.starts_with(s, "P3\n")
+}

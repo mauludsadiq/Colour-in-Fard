@@ -1,0 +1,22 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("../src/core/simplex") as simplex
+import("../src/render/grid") as grid
+import("../render/ppm") as ppm
+
+fn main() {
+  let args = cli.args() in
+  let k = if list.len(args) > 1 then cast.int(list.get(args, 1)) else 5 in
+  let palette = simplex.enumerate_simplex_palette(k) in
+
+  io.println("K = " + str.from_int(k))
+  io.println("palette size = " + str.from_int(list.len(palette)))
+
+  let img = grid.palette_grid(palette, k, simplex.color_i_to_rgb_f, 40, 40) in
+  let out = "out/K" + str.from_int(k) + "_palette_grid.ppm" in
+  ppm.save_ppm(img, out)
+  io.println("wrote " + out)
+}
+
+main()

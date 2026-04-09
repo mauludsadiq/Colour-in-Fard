@@ -1,0 +1,12 @@
+import("../render/ppm") as ppm
+
+fn horizontal_strip(width, height, sample_fn) {
+  let img = ppm.blank(width, height, { r: 0.0, g: 0.0, b: 0.0 }) in
+  let x = 0 in
+  while x < width {
+    let rgb = sample_fn(x, width) in
+    img = ppm.fill_rect(img, x, 0, 1, height, rgb)
+    x = x + 1
+  }
+  img
+}

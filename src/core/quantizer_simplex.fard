@@ -1,0 +1,88 @@
+import("std/cast") as cast
+import("../core/types") as t
+import("../core/math") as m
+
+fn new(k) {
+  if k <= 0 then err("K must be positive") else t.quantizer_simplex(k)
+}
+
+fn quantize(q, rgb) {
+  let kf = cast.float(q.k) in
+  let r = m.clampf(rgb.r, 0.0, 1.0) in
+  let g = m.clampf(rgb.g, 0.0, 1.0) in
+  let b = m.clampf(rgb.b, 0.0, 1.0) in
+  let maxv = q.k in
+
+  let ri0 = m.clampi(m.roundi(r * kf), 0, maxv) in
+  let gi0 = m.clampi(m.roundi(g * kf), 0, maxv) in
+  let bi0 = m.clampi(m.roundi(b * kf), 0, maxv) in
+
+  let ri1 = if ri0 == 0 && gi0 == 0 && bi0 == 0 then 1 else ri0 in
+  let gi1 = gi0 in
+  let bi1 = bi0 in
+  let sum1 = ri1 + gi1 + bi1 in
+
+  if sum1 <= maxv then
+    t.color_i(ri1, gi1, bi1)
+  else
+    let scale = cast.float(maxv) / cast.float(sum1) in
+    let rr = m.clampi(m.roundi(cast.float(ri1) * scale), 0, maxv) in
+    let gg = m.clampi(m.roundi(cast.float(gi1) * scale), 0, maxv) in
+    let bb = m.clampi(m.roundi(cast.float(bi1) * scale), 0, maxv) in
+    let sum2 = rr + gg + bb in
+    if sum2 <= maxv then
+      t.color_i(rr, gg, bb)
+    else if rr >= gg && rr >= bb && rr > 0 then
+      t.color_i(rr - (sum2 - maxv), gg, bb)
+    else if gg >= rr && gg >= bb && gg > 0 then
+      t.color_i(rr, gg - (sum2 - maxv), bb)
+    else
+      t.color_i(rr, gg, bb - (sum2 - maxv))
+}
+
+fn project_rgb(q, rgb) {
+  let c = quantize(q, rgb) in
+  let kf = cast.float(q.k) in
+  t.rgb_f(c.r / kf, c.g / kf, c.b / kf)
+}
+
+fn idem_state_new(q, samples, eps) {
+  { q: q, samples: samples, eps: eps, i: 0, ok: true, done: false }
+}
+
+fn idem_cond(s) {
+  !s.done
+}
+
+fn idem_step(s) {
+  let rgb =
+    if s.i % 5 == 0 then t.rgb_f(1.0, 0.0, 0.0)
+    else if s.i % 5 == 1 then t.rgb_f(0.0, 1.0, 0.0)
+    else if s.i % 5 == 2 then t.rgb_f(0.0, 0.0, 1.0)
+    else if s.i % 5 == 3 then t.rgb_f(0.8, 0.3, 0.1)
+    else t.rgb_f(0.2, 0.7, 0.5)
+  in
+  let p1 = project_rgb(s.q, rgb) in
+  let p2 = project_rgb(s.q, p1) in
+  let d0 = m.absf(p1.r - p2.r) in
+  let d1 = m.absf(p1.g - p2.g) in
+  let d2 = m.absf(p1.b - p2.b) in
+  let ok1 = s.ok && !(d0 > s.eps || d1 > s.eps || d2 > s.eps) in
+  let i1 = s.i + 1 in
+  if i1 < s.samples then
+    { q: s.q, samples: s.samples, eps: s.eps, i: i1, ok: ok1, done: false }
+  else
+    { q: s.q, samples: s.samples, eps: s.eps, i: i1, ok: ok1, done: true }
+}
+
+fn check_idempotence(q, samples, eps) {
+  let w = while idem_state_new(q, samples, eps) idem_cond idem_step in
+  w.value.ok
+}
+
+{
+  new: new,
+  quantize: quantize,
+  project_rgb: project_rgb,
+  check_idempotence: check_idempotence
+}

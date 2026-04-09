@@ -1,0 +1,36 @@
+import("std/list") as list
+import("../src/core/types") as t
+import("../src/core/simplex") as simplex
+import("../src/core/cube") as cube
+import("../src/core/quantizer_simplex") as qs
+
+test "simplex palette size K=5 is 56" {
+  list.len(simplex.enumerate_simplex_palette(5)) == 56
+}
+
+test "simplex boundary size K=5 is 21" {
+  list.len(simplex.enumerate_simplex_boundary(5)) == 21
+}
+
+test "cube palette size K=5 is 216" {
+  list.len(cube.enumerate_cube_palette(5)) == 216
+}
+
+test "simplex quantizer output respects sum <= K" {
+  let q = qs.new(5) in
+  let c = qs.quantize(q, t.rgb_f(0.8, 0.7, 0.6)) in
+  c.r + c.g + c.b <= 5
+}
+
+test "simplex quantizer avoids zero vector" {
+  let q = qs.new(5) in
+  let c = qs.quantize(q, t.rgb_f(0.0, 0.0, 0.0)) in
+  c.r + c.g + c.b > 0
+}
+
+test "project_rgb is idempotent on sample" {
+  let q = qs.new(5) in
+  let p1 = qs.project_rgb(q, t.rgb_f(0.8, 0.3, 0.1)) in
+  let p2 = qs.project_rgb(q, p1) in
+  p1.r == p2.r && p1.g == p2.g && p1.b == p2.b
+}

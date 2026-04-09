@@ -1,0 +1,75 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("../src/core/cube") as cube
+import("../src/core/rgb_hsv") as hsv
+import("../render/ppm") as ppm
+
+fn insert_sorted_by_hue(row, item) {
+  let out = [] in
+  let placed = false in
+  let i = 0 in
+  while i < list.len(row) {
+    let cur = list.get(row, i) in
+    if !placed && item.h <= cur.h then
+      out = list.append(out, item)
+      placed = true
+    else
+      0
+    
+    out = list.append(out, cur)
+    i = i + 1
+  }
+  if !placed then list.append(out, item) else out
+}
+
+fn main() {
+  let args = cli.args() in
+  let k = if list.len(args) > 1 then cast.int(list.get(args, 1)) else 20 in
+  let palette = cube.enumerate_cube_palette(k) in
+  let rows = {} in
+
+  let i = 0 in
+  while i < list.len(palette) {
+    let c = list.get(palette, i) in
+    let rgb = cube.color_i_to_rgb_f(c, k) in
+    let hh = hsv.rgb_to_hsv(rgb).h in
+    let s = c.r + c.g + c.b in
+    let key = str.from_int(s) in
+    let row0 = rec.get(rows, key, []) in
+    let row1 = insert_sorted_by_hue(row0, { c: c, h: hh, rgb: rgb }) in
+    rows = rec.set(rows, key, row1)
+    i = i + 1
+  }
+
+  let max_sum = 3 * k in
+  let row_idx = 0 in
+  let max_cols = 0 in
+  while row_idx <= max_sum {
+    let row = rec.get(rows, str.from_int(row_idx), []) in
+    if list.len(row) > max_cols then max_cols = list.len(row) else 0
+    row_idx = row_idx + 1
+  }
+
+  let cell_w = 10 in
+  let cell_h = 10 in
+  let img = ppm.blank(max_cols * cell_w, (max_sum + 1) * cell_h, { r: 0.0, g: 0.0, b: 0.0 }) in
+
+  let rix = 0 in
+  while rix <= max_sum {
+    let row = rec.get(rows, str.from_int(rix), []) in
+    let cix = 0 in
+    while cix < list.len(row) {
+      let item = list.get(row, cix) in
+      img = ppm.fill_rect(img, cix * cell_w, rix * cell_h, cell_w, cell_h, item.rgb)
+      cix = cix + 1
+    }
+    rix = rix + 1
+  }
+
+  let out = "out/K" + str.from_int(k) + "_cube_palette_brightness_hue.ppm" in
+  ppm.save_ppm(img, out)
+  io.println("wrote " + out)
+}
+
+main()

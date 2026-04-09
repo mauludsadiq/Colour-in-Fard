@@ -1,0 +1,68 @@
+import("../core/types") as t
+import("../core/math") as m
+
+fn rgb_to_hsv(rgb) {
+  let r = rgb.r in
+  let g = rgb.g in
+  let b = rgb.b in
+  let maxv = m.maxf(r, m.maxf(g, b)) in
+  let minv = m.minf(r, m.minf(g, b)) in
+  let c = maxv - minv in
+  let h =
+    if c == 0.0 then 0.0
+    else if maxv == r then
+      let raw = (g - b) / c in
+      let h0 = if raw < 0.0 then raw + 6.0 else raw in
+      60.0 * h0
+    else if maxv == g then
+      60.0 * (((b - r) / c) + 2.0)
+    else
+      60.0 * (((r - g) / c) + 4.0)
+  in
+  let s = if maxv == 0.0 then 0.0 else c / maxv in
+  let v = maxv in
+  t.hsv(m.mod360(h), s, v)
+}
+
+fn hsv_to_rgb(h_deg, s, v) {
+  let c = v * s in
+  let hp0 = h_deg / 60.0 in
+  let hp1 = if hp0 >= 6.0 then hp0 - 6.0 else hp0 in
+  let hp = if hp1 < 0.0 then hp1 + 6.0 else hp1 in
+  let xm = hp - (2.0 * cast.int(hp / 2.0)) in
+  let x = c * (1.0 - m.absf(xm - 1.0)) in
+  let base =
+    if hp < 1.0 then { r1: c, g1: x, b1: 0.0 }
+    else if hp < 2.0 then { r1: x, g1: c, b1: 0.0 }
+    else if hp < 3.0 then { r1: 0.0, g1: c, b1: x }
+    else if hp < 4.0 then { r1: 0.0, g1: x, b1: c }
+    else if hp < 5.0 then { r1: x, g1: 0.0, b1: c }
+    else { r1: c, g1: 0.0, b1: x }
+  in
+  let mm = v - c in
+  t.rgb_f(base.r1 + mm, base.g1 + mm, base.b1 + mm)
+}
+
+fn hue_name(h) {
+  let x = m.mod360(h) in
+  if x >= 345.0 || x < 15.0 then "red"
+  else if x < 30.0 then "red-orange"
+  else if x < 50.0 then "orange"
+  else if x < 70.0 then "yellow"
+  else if x < 100.0 then "yellow-green"
+  else if x < 140.0 then "green"
+  else if x < 170.0 then "blue-green"
+  else if x < 190.0 then "cyan"
+  else if x < 220.0 then "blue-cyan"
+  else if x < 250.0 then "blue"
+  else if x < 290.0 then "blue-magenta"
+  else if x < 320.0 then "magenta"
+  else if x < 345.0 then "red-magenta"
+  else "red"
+}
+
+{
+  rgb_to_hsv: rgb_to_hsv,
+  hsv_to_rgb: hsv_to_rgb,
+  hue_name: hue_name
+}
