@@ -1,0 +1,17 @@
+import("std/list") as list
+import("../src/core/simplex") as simplex
+
+let palette = simplex.enumerate_simplex_palette(5)
+test "palette size" { list.len(palette) == 56 }
+
+let c0 = list.get(palette, 0)
+let c1 = list.get(palette, 1)
+let c10 = list.get(palette, 10)
+
+let rgb0  = simplex.color_i_to_rgb_f(c0, 5)
+let rgb1  = simplex.color_i_to_rgb_f(c1, 5)
+let rgb10 = simplex.color_i_to_rgb_f(c10, 5)
+
+test "entry 0"  { rgb0.r == 0.0 && rgb0.g == 0.0 && rgb0.b == 0.0 }
+test "entry 1 not black" { rgb1.r > 0.0 || rgb1.g > 0.0 || rgb1.b > 0.0 }
+test "entry 10 not black" { rgb10.r > 0.0 || rgb10.g > 0.0 || rgb10.b > 0.0 }

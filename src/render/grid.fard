@@ -1,27 +1,27 @@
+// grid.fard — palette grid using collapsed image algebra
+// O(m) construction where m = number of palette cells
+
 import("std/list") as list
 import("std/math") as math
 import("std/cast") as cast
 import("../render/ppm") as ppm
 
 fn palette_grid(palette, k, to_rgb_fn, cell_w, cell_h) {
-  let n = list.len(palette) in
+  let n    = list.len(palette) in
   let cols = cast.int(math.ceil(math.sqrt(cast.float(n)))) in
   let rows = cast.int(math.ceil(cast.float(n) / cast.float(cols))) in
-  let width = cols * cell_w in
+  let width  = cols * cell_w in
   let height = rows * cell_h in
-  let img = ppm.blank(width, height, { r: 0.0, g: 0.0, b: 0.0 }) in
-
-  let i = 0 in
-  while i < n {
-    let c = list.get(palette, i) in
-    let rgb = to_rgb_fn(c, k) in
-    let col = i % cols in
-    let row = i / cols in
-    let x0 = col * cell_w in
-    let y0 = row * cell_h in
-    img = ppm.fill_rect(img, x0, y0, cell_w, cell_h, rgb)
-    i = i + 1
-  }
-
-  img
+  let img = ppm.canvas(width, height) in
+  // Build one rectangle per palette cell — O(m=56) not O(WH=89600)
+  list.fold(list.range(0, n), img, fn(acc, i) {
+    let col   = i % cols in
+    let row   = i / cols in
+    let x0    = col * cell_w in
+    let y0    = row * cell_h in
+    let color = to_rgb_fn(list.get(palette, i), k) in
+    ppm.add_rect(acc, ppm.solid_rect(x0, y0, cell_w, cell_h, color))
+  })
 }
+
+{ palette_grid: palette_grid }

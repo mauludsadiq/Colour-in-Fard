@@ -1,0 +1,31 @@
+import("std/list") as list
+import("../src/render/ppm") as ppm
+
+// Two non-overlapping rectangles side by side
+let r1 = ppm.solid_rect(0, 0, 40, 40, { r: 1.0, g: 0.0, b: 0.0 })
+let r2 = ppm.solid_rect(40, 0, 40, 40, { r: 0.0, g: 0.0, b: 1.0 })
+let rects = [r1, r2]
+
+// A. active_row boundary identities
+test "active at top"     { ppm.active_row(0, r1) }
+test "active at bottom"  { ppm.active_row(39, r1) }
+test "inactive above"    { ppm.active_row(0, r1) && !ppm.active_row(-1, r1) }
+test "inactive below"    { !ppm.active_row(40, r1) }
+
+// B. rect_to_run projection
+let run1 = ppm.rect_to_run(r1)
+test "run x"     { run1.x == 0 }
+test "run w"     { run1.w == 40 }
+test "run color" { run1.color.r == 1.0 }
+
+// C. row_runs on row 0
+let runs = ppm.row_runs(rects, 80, 0)
+test "two runs"          { list.len(runs) == 2 }
+test "first run x"       { list.get(runs, 0).x == 0 }
+test "first run color r" { list.get(runs, 0).color.r == 1.0 }
+test "second run x"      { list.get(runs, 1).x == 40 }
+test "second run color b"{ list.get(runs, 1).color.b == 1.0 }
+
+// D. row_runs on inactive row
+let runs_out = ppm.row_runs(rects, 80, 50)
+test "empty on inactive row" { list.len(runs_out) == 0 }

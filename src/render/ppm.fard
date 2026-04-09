@@ -1,123 +1,114 @@
-import("std/list") as list
-import("std/str") as str
-import("std/cast") as cast
 import("std/fs") as fs
+// ppm.fard — collapsed image algebra
+// Represent image as list of solid rectangles, expand once at emit boundary
+// O(m) construction where m = number of rectangles, not O(WH) pixels
 
+import("std/list") as list
+import("std/str")  as str
+import("std/cast") as cast
+
+// Color helpers
 fn rgb255(rgb) {
-  let r0 = cast.int((rgb.r * 255.0) + 0.5) in
-  let g0 = cast.int((rgb.g * 255.0) + 0.5) in
-  let b0 = cast.int((rgb.b * 255.0) + 0.5) in
-  let r = if r0 < 0 then 0 else if r0 > 255 then 255 else r0 in
-  let g = if g0 < 0 then 0 else if g0 > 255 then 255 else g0 in
-  let b = if b0 < 0 then 0 else if b0 > 255 then 255 else b0 in
-  { r: r, g: g, b: b }
+  let r = cast.int(rgb.r * 255.0 + 0.5) in
+  let g = cast.int(rgb.g * 255.0 + 0.5) in
+  let b = cast.int(rgb.b * 255.0 + 0.5) in
+  { r: if r < 0 then 0 else if r > 255 then 255 else r,
+    g: if g < 0 then 0 else if g > 255 then 255 else g,
+    b: if b < 0 then 0 else if b > 255 then 255 else b }
 }
 
-fn blank_state_new(width, height, rgb) {
-  { width: width, height: height, rgb: rgb, i: 0, n: width * height, pixels: [], done: false }
+fn color_str(c) {
+  let q = rgb255(c) in
+  str.concat(str.from_int(q.r), str.concat(" ", str.concat(str.from_int(q.g), str.concat(" ", str.from_int(q.b)))))
 }
 
-fn blank_cond(s) {
-  !s.done
+// Collapsed image: list of solid rectangles
+fn solid_rect(x, y, w, h, color) {
+  { t: "rect", x: x, y: y, w: w, h: h, color: color }
 }
 
-fn blank_step(s) {
-  let i1 = s.i + 1 in
-  let px1 = list.append(s.pixels, s.rgb) in
-  if i1 < s.n then
-    { width: s.width, height: s.height, rgb: s.rgb, i: i1, n: s.n, pixels: px1, done: false }
-  else
-    { width: s.width, height: s.height, rgb: s.rgb, i: i1, n: s.n, pixels: px1, done: true }
+fn canvas(width, height) {
+  { width: width, height: height, rects: [] }
 }
 
-fn blank(width, height, rgb) {
-  let w = while blank_state_new(width, height, rgb) blank_cond blank_step in
-  { width: width, height: height, pixels: w.value.pixels }
+fn add_rect(img, rect) {
+  { width: img.width, height: img.height, rects: list.append(img.rects, rect) }
 }
 
-fn put_pixel(img, x, y, rgb) {
-  let idx = y * img.width + x in
-  let px = list.set(img.pixels, idx, rgb) in
-  { width: img.width, height: img.height, pixels: px }
+// Find color at pixel (px, py) by scanning rects last-write-wins
+fn color_at(rects, px, py, default_color) {
+  list.fold(rects, default_color, fn(c, r) {
+    if px >= r.x && px < r.x + r.w && py >= r.y && py < r.y + r.h
+    then r.color else c
+  })
 }
 
-fn fill_rect_y_state_new(img, x0, y0, w, h, rgb) {
-  { img: img, x0: x0, y0: y0, w: w, h: h, rgb: rgb, yy: y0, done: false }
+// Row run: find color segments in a row
+// active_row: half-open interval — rect.y <= y < rect.y + rect.h
+fn active_row(y, rect) {
+  rect.y <= y && y < rect.y + rect.h
 }
 
-fn fill_rect_y_cond(s) {
-  !s.done
+// rect_to_run: project rectangle to its horizontal slice on row y
+fn rect_to_run(rect) {
+  { x: rect.x, w: rect.w, color: rect.color }
 }
 
-fn fill_rect_x_state_new(img, x0, y, w, rgb) {
-  { img: img, x0: x0, y: y, w: w, rgb: rgb, xx: x0, done: false }
+// row_runs: exact implementation per spec
+// filter -> map -> sort_by x -> fold
+fn row_runs(rects, width, y) {
+  let active  = list.filter(rects, fn(rect) { active_row(y, rect) }) in
+  let runs0   = list.map(active, fn(rect) { rect_to_run(rect) }) in
+  let sorted  = list.sort_by(runs0, fn(a, b) { if a.x < b.x then -1 else if a.x > b.x then 1 else 0 }) in
+  let final   = list.fold(sorted, { x: 0, runs: [] }, fn(state, run) {
+    { x: run.x + run.w, runs: list.append(state.runs, run) }
+  }) in
+  final.runs
 }
 
-fn fill_rect_x_cond(s) {
-  !s.done
+// Expand a row of runs to a PPM row string
+fn expand_row(runs, width) {
+  let run_str = str.join(
+    list.flat_map(runs, fn(run) {
+      let cs = color_str(run.color) in
+      list.build(run.w, fn(i) { cs })
+    }), "\n") in
+  run_str
 }
 
-fn fill_rect_x_step(s) {
-  let img1 = put_pixel(s.img, s.xx, s.y, s.rgb) in
-  let xx1 = s.xx + 1 in
-  if xx1 < s.x0 + s.w then
-    { img: img1, x0: s.x0, y: s.y, w: s.w, rgb: s.rgb, xx: xx1, done: false }
-  else
-    { img: img1, x0: s.x0, y: s.y, w: s.w, rgb: s.rgb, xx: xx1, done: true }
-}
-
-fn fill_rect_y_step(s) {
-  let wx = while fill_rect_x_state_new(s.img, s.x0, s.yy, s.w, s.rgb) fill_rect_x_cond fill_rect_x_step in
-  let img1 = wx.value.img in
-  let yy1 = s.yy + 1 in
-  if yy1 < s.y0 + s.h then
-    { img: img1, x0: s.x0, y0: s.y0, w: s.w, h: s.h, rgb: s.rgb, yy: yy1, done: false }
-  else
-    { img: img1, x0: s.x0, y0: s.y0, w: s.w, h: s.h, rgb: s.rgb, yy: yy1, done: true }
-}
-
-fn fill_rect(img, x0, y0, w, h, rgb) {
-  let wy = while fill_rect_y_state_new(img, x0, y0, w, h, rgb) fill_rect_y_cond fill_rect_y_step in
-  wy.value.img
-}
-
-fn lines_state_new(img) {
-  { img: img, i: 0, lines: ["P3", str.concat(str.from_int(img.width), str.concat(" ", str.from_int(img.height))), "255"], done: false }
-}
-
-fn lines_cond(s) {
-  !s.done
-}
-
-fn lines_step(s) {
-  let p = list.get(s.img.pixels, s.i) in
-  let q = rgb255(p) in
-  let line = str.concat(str.from_int(q.r), str.concat(" ", str.concat(str.from_int(q.g), str.concat(" ", str.from_int(q.b))))) in
-  let lines1 = list.append(s.lines, line) in
-  let i1 = s.i + 1 in
-  if i1 < list.len(s.img.pixels) then
-    { img: s.img, i: i1, lines: lines1, done: false }
-  else
-    { img: s.img, i: i1, lines: lines1, done: true }
-}
-
-fn encode_ascii_ppm(img) {
-  if list.len(img.pixels) == 0 then
-    str.concat(str.join(["P3", str.concat(str.from_int(img.width), str.concat(" ", str.from_int(img.height))), "255"], "\n"), "\n")
-  else
-    let w = while lines_state_new(img) lines_cond lines_step in
-    str.concat(str.join(w.value.lines, "\n"), "\n")
+// Emit PPM: sweep rows, expand runs
+fn encode_ppm(img) {
+  let header = str.concat("P3\n", str.concat(str.from_int(img.width), str.concat(" ", str.concat(str.from_int(img.height), "\n255\n")))) in
+  let rows = list.build(img.height, fn(y) {
+    let runs = row_runs(img.rects, img.width, y) in
+    expand_row(runs, img.width)
+  }) in
+  str.concat(header, str.join(rows, "\n"))
 }
 
 fn save_ppm(img, path) {
-  fs.write_text(path, encode_ascii_ppm(img))
+  fs.write_text(path, encode_ppm(img))
+}
+
+// Legacy compatibility: blank + fill_rect using collapsed representation
+fn blank(width, height, rgb) {
+  let c = canvas(width, height) in
+  add_rect(c, solid_rect(0, 0, width, height, rgb))
+}
+
+fn fill_rect(img, x0, y0, w, h, rgb) {
+  add_rect(img, solid_rect(x0, y0, w, h, rgb))
+}
+
+fn put_pixel(img, x, y, rgb) {
+  add_rect(img, solid_rect(x, y, 1, 1, rgb))
 }
 
 {
-  rgb255: rgb255,
-  blank: blank,
-  put_pixel: put_pixel,
-  fill_rect: fill_rect,
-  encode_ascii_ppm: encode_ascii_ppm,
-  save_ppm: save_ppm
+  rgb255: rgb255, color_str: color_str,
+  solid_rect: solid_rect, canvas: canvas, add_rect: add_rect,
+  active_row: active_row, rect_to_run: rect_to_run,
+  color_at: color_at, row_runs: row_runs, expand_row: expand_row,
+  encode_ppm: encode_ppm, save_ppm: save_ppm,
+  blank: blank, fill_rect: fill_rect, put_pixel: put_pixel
 }

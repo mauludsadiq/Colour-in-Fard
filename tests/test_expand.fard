@@ -1,0 +1,16 @@
+import("std/list") as list
+import("../src/render/ppm") as ppm
+import("std/str") as str
+
+let r1 = ppm.solid_rect(0, 0, 2, 2, { r: 1.0, g: 0.0, b: 0.0 })
+let r2 = ppm.solid_rect(2, 0, 2, 2, { r: 0.0, g: 0.0, b: 1.0 })
+let img = ppm.add_rect(ppm.add_rect(ppm.canvas(4, 2), r1), r2)
+
+let runs = ppm.row_runs(img.rects, 4, 0)
+test "runs count" { list.len(runs) == 2 }
+
+let encoded = ppm.encode_ppm(img)
+let lines = str.split(encoded, "\n")
+test "line count" { list.len(lines) == 8 }
+test "pixel 1" { list.get(lines, 3) == "255 0 0" }
+test "pixel 3" { list.get(lines, 5) == "0 0 255" }
