@@ -3,8 +3,10 @@ import("std/str") as str
 import("std/cast") as cast
 import("std/io") as io
 import("std/cli") as cli
+import("std/json") as json
 import("../src/core/types") as t
 import("../src/core/cube") as cube
+import("../src/core/receipt") as receipt
 import("../src/export/json_catalogue") as jc
 import("../src/export/css") as css
 import("../src/render/svg") as svg
@@ -20,9 +22,13 @@ fn main() {
   let n = list.len(colours) in
   let _ = io.println(str.concat([str.from_int(n), " colours"])) in
 
-  let json_path = str.concat(["out/catalogue_K", str.from_int(k), ".json"]) in
-  let css_path  = str.concat(["out/catalogue_K", str.from_int(k), ".css"]) in
-  let svg_path  = str.concat(["out/catalogue_K", str.from_int(k), ".svg"]) in
+  let base     = str.concat(["out/catalogue_K", str.from_int(k)]) in
+  let json_path = str.concat([base, ".json"]) in
+  let css_path  = str.concat([base, ".css"]) in
+  let svg_path  = str.concat([base, ".svg"]) in
+
+  let entries = list.map(colours, fn(rgb) { jc.color_entry(rgb) }) in
+  let json_out = json.encode(entries) in
 
   let _ = jc.write_catalogue(colours, json_path) in
   let _ = io.println(str.concat(["wrote ", json_path])) in
@@ -32,7 +38,16 @@ fn main() {
 
   let cols = cast.int(cast.float(n) / 10.0) + 1 in
   let _ = svg.write_svg(colours, cols, 10, 10, svg_path) in
-  io.println(str.concat(["wrote ", svg_path]))
+  let _ = io.println(str.concat(["wrote ", svg_path])) in
+
+  let r = receipt.make_receipt(
+    "catalogue",
+    { k: k, colour_count: n },
+    { naming_version: receipt.NAMING_VERSION, lab_version: receipt.LAB_VERSION },
+    json_out
+  ) in
+  let _ = receipt.write_receipt(r, receipt.receipt_path(base)) in
+  io.println(str.concat(["receipt: ", receipt.receipt_path(base)]))
 }
 
 main()

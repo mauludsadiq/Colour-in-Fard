@@ -4,11 +4,13 @@ import("std/cast") as cast
 import("std/io") as io
 import("std/cli") as cli
 import("std/json") as json
+import("std/fs") as fs
 import("../src/core/types") as t
 import("../src/core/rgb_hsv") as hsv
 import("../src/core/rgb_lab") as lab
 import("../src/core/color_name") as cn
 import("../src/core/color_relations") as rel
+import("../src/core/receipt") as receipt
 import("../src/export/json_catalogue") as jc
 
 fn hex_char_to_int(c) {
@@ -50,15 +52,36 @@ fn main() {
   else
     let hex = list.get(args, 0) in
     let rgb = parse_hex(hex) in
-    let h   = hsv.rgb_to_hsv(rgb) in
-    let l   = lab.rgb_to_lab(rgb) in
-    let lch = lab.lab_to_lch(l) in
+    let h    = hsv.rgb_to_hsv(rgb) in
+    let l    = lab.rgb_to_lab(rgb) in
+    let lch  = lab.lab_to_lch(l) in
     let name = cn.nearest_name(rgb) in
-    let comp = rel.complement(rgb) in
+    let comp  = rel.complement(rgb) in
     let triad = rel.triadic(rgb) in
     let analog = rel.analogous(rgb) in
     let shades = rel.shades(rgb, 4) in
     let tints  = rel.tints(rgb, 4) in
+
+    let output = json.encode({
+      hex:  jc.rgb_to_hex(rgb),
+      name: name,
+      rgb:  { r: cast.int(rgb.r * 255.0 + 0.5), g: cast.int(rgb.g * 255.0 + 0.5), b: cast.int(rgb.b * 255.0 + 0.5) },
+      hsv:  { h: h.h, s: h.s, v: h.v },
+      lab:  { l: l.l, a: l.a, b: l.b },
+      lch:  { l: lch.l, c: lch.c, h: lch.h },
+      relations: {
+        complement: jc.rgb_to_hex(comp),
+        triadic:    [ jc.rgb_to_hex(list.get(triad, 1)), jc.rgb_to_hex(list.get(triad, 2)) ],
+        analogous:  [ jc.rgb_to_hex(list.get(analog, 0)), jc.rgb_to_hex(list.get(analog, 2)) ],
+        shades:     list.map(shades, fn(s) { jc.rgb_to_hex(s) }),
+        tints:      list.map(tints,  fn(s) { jc.rgb_to_hex(s) })
+      }
+    }) in
+
+    let r = receipt.make_receipt("query", { hex: hex }, { naming_version: receipt.NAMING_VERSION, lab_version: receipt.LAB_VERSION }, output) in
+    let out_path = str.concat(["out/query_", str.slice(jc.rgb_to_hex(rgb), 1, 7)]) in
+    let _ = fs.write_text(str.concat([out_path, ".json"]), output) in
+    let _ = receipt.write_receipt(r, receipt.receipt_path(out_path)) in
 
     let _ = io.println(str.concat(["hex:  ", jc.rgb_to_hex(rgb)])) in
     let _ = io.println(str.concat(["name: ", name])) in
@@ -88,6 +111,7 @@ fn main() {
     let _ = list.fold(tints, 0, fn(_, s) {
       io.println(str.concat(["  ", jc.rgb_to_hex(s), " (", cn.nearest_name(s), ")"]))
     }) in
+    let _ = io.println(str.concat(["receipt: ", receipt.receipt_path(out_path)])) in
     io.println("")
 }
 

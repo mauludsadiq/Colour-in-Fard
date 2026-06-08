@@ -1,0 +1,40 @@
+import("std/str") as str
+import("../src/core/receipt") as receipt
+
+test "receipt has kind" {
+  let r = receipt.make_receipt("query", { hex: "#ff6600" }, { k: 255 }, "output") in
+  r.kind == "query"
+}
+
+test "receipt has naming version" {
+  let r = receipt.make_receipt("query", { hex: "#ff6600" }, { k: 255 }, "output") in
+  str.len(r.naming_version) > 0
+}
+
+test "receipt has input digest" {
+  let r = receipt.make_receipt("query", { hex: "#ff6600" }, { k: 255 }, "output") in
+  str.starts_with(r.input_digest, "sha256:")
+}
+
+test "receipt has output digest" {
+  let r = receipt.make_receipt("query", { hex: "#ff6600" }, { k: 255 }, "output") in
+  str.starts_with(r.output_digest, "sha256:")
+}
+
+test "same inputs produce same digest" {
+  let r1 = receipt.make_receipt("query", { hex: "#ff6600" }, { k: 255 }, "output") in
+  let r2 = receipt.make_receipt("query", { hex: "#ff6600" }, { k: 255 }, "output") in
+  r1.input_digest == r2.input_digest
+}
+
+test "different inputs produce different digest" {
+  let r1 = receipt.make_receipt("query", { hex: "#ff6600" }, { k: 255 }, "output") in
+  let r2 = receipt.make_receipt("query", { hex: "#0000ff" }, { k: 255 }, "output") in
+  r1.input_digest != r2.input_digest
+}
+
+test "different outputs produce different digest" {
+  let r1 = receipt.make_receipt("query", { hex: "#ff6600" }, { k: 255 }, "abc") in
+  let r2 = receipt.make_receipt("query", { hex: "#ff6600" }, { k: 255 }, "xyz") in
+  r1.output_digest != r2.output_digest
+}

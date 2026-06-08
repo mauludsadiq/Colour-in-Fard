@@ -1,0 +1,53 @@
+import("std/hash") as hash
+import("std/json") as json
+import("std/str") as str
+import("std/list") as list
+import("std/fs") as fs
+
+// Version of the naming table and thresholds -- bump when color_name.fard changes
+let NAMING_VERSION = "1.0.0"
+
+// Version of the LAB/LCH math -- bump when rgb_lab.fard changes
+let LAB_VERSION = "1.0.0"
+
+fn digest_text(s) {
+  hash.sha256_text(s)
+}
+
+fn digest_inputs(inputs) {
+  digest_text(json.encode(inputs))
+}
+
+fn make_receipt(kind, inputs, params, output_text) {
+  let input_digest   = digest_inputs(inputs) in
+  let output_digest  = digest_text(output_text) in
+  let params_digest  = digest_inputs(params) in
+  {
+    kind:           kind,
+    naming_version: NAMING_VERSION,
+    lab_version:    LAB_VERSION,
+    input_digest:   input_digest,
+    params_digest:  params_digest,
+    output_digest:  output_digest,
+    inputs:         inputs,
+    params:         params
+  }
+}
+
+fn write_receipt(receipt, path) {
+  fs.write_text(path, json.encode(receipt))
+}
+
+fn receipt_path(output_path) {
+  str.concat([output_path, ".receipt.json"])
+}
+
+{
+  NAMING_VERSION:  NAMING_VERSION,
+  LAB_VERSION:     LAB_VERSION,
+  digest_text:     digest_text,
+  digest_inputs:   digest_inputs,
+  make_receipt:    make_receipt,
+  write_receipt:   write_receipt,
+  receipt_path:    receipt_path
+}
