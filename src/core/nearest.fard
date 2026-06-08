@@ -2,21 +2,24 @@ import("std/list") as list
 import("../core/math") as m
 
 fn nearest_palette_color_rgbf(target, palette, k, to_rgb_fn) {
-  let state = list.fold(list.range(0, list.len(palette)), { best: null, best_d2: 1000000000.0 }, fn(acc, i) {
-    let c = list.get(palette, i) in
-    let rgb = to_rgb_fn(c, k) in
-    let dr = rgb.r - target.r in
-    let dg = rgb.g - target.g in
-    let db = rgb.b - target.b in
-    let d2 = m.sq(dr) + m.sq(dg) + m.sq(db) in
-    if d2 < acc.best_d2 then
-      { best: c, best_d2: d2 }
-    else
-      acc
-  }) in
-  state.best
+ if list.len(palette) == 0 then
+   err("nearest_palette_color_rgbf: palette is empty")
+ else
+   let state = list.fold(list.range(0, list.len(palette)), { best: list.get(palette, 0), best_d2: 1000000000.0 }, fn(acc, i) {
+     let c = list.get(palette, i) in
+     let rgb = to_rgb_fn(c, k) in
+     let dr = rgb.r - target.r in
+     let dg = rgb.g - target.g in
+     let db = rgb.b - target.b in
+     let d2 = m.sq(dr) + m.sq(dg) + m.sq(db) in
+     if d2 < acc.best_d2 then
+       { best: c, best_d2: d2 }
+     else
+       acc
+   }) in
+   state.best
 }
 
 {
-  nearest_palette_color_rgbf: nearest_palette_color_rgbf
+ nearest_palette_color_rgbf: nearest_palette_color_rgbf
 }
