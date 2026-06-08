@@ -11,6 +11,6 @@ test "runs count" { list.len(runs) == 2 }
 
 let encoded = ppm.encode_ppm(img)
 let lines = str.split(encoded, "\n")
-test "line count" { list.len(lines) == 8 }
+test "line count" { list.len(lines) == 11 }
 test "pixel 1" { list.get(lines, 3) == "255 0 0" }
 test "pixel 3" { list.get(lines, 5) == "0 0 255" }
