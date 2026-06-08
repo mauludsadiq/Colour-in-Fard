@@ -1,0 +1,94 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/io") as io
+import("std/cli") as cli
+import("std/json") as json
+import("../src/core/types") as t
+import("../src/core/rgb_hsv") as hsv
+import("../src/core/rgb_lab") as lab
+import("../src/core/color_name") as cn
+import("../src/core/color_relations") as rel
+import("../src/export/json_catalogue") as jc
+
+fn hex_char_to_int(c) {
+  if c == "0" then 0
+  else if c == "1" then 1
+  else if c == "2" then 2
+  else if c == "3" then 3
+  else if c == "4" then 4
+  else if c == "5" then 5
+  else if c == "6" then 6
+  else if c == "7" then 7
+  else if c == "8" then 8
+  else if c == "9" then 9
+  else if c == "a" || c == "A" then 10
+  else if c == "b" || c == "B" then 11
+  else if c == "c" || c == "C" then 12
+  else if c == "d" || c == "D" then 13
+  else if c == "e" || c == "E" then 14
+  else 15
+}
+
+fn parse_byte(s, offset) {
+  hex_char_to_int(str.slice(s, offset, offset + 1)) * 16 +
+  hex_char_to_int(str.slice(s, offset + 1, offset + 2))
+}
+
+fn parse_hex(hex) {
+  let s = if str.starts_with(hex, "#") then str.slice(hex, 1, 7) else hex in
+  let r = parse_byte(s, 0) in
+  let g = parse_byte(s, 2) in
+  let b = parse_byte(s, 4) in
+  t.rgb_f(cast.float(r) / 255.0, cast.float(g) / 255.0, cast.float(b) / 255.0)
+}
+
+fn main() {
+  let args = cli.args() in
+  if list.len(args) == 0 then
+    io.println("usage: query <hex>  e.g. query #ff6600")
+  else
+    let hex = list.get(args, 0) in
+    let rgb = parse_hex(hex) in
+    let h   = hsv.rgb_to_hsv(rgb) in
+    let l   = lab.rgb_to_lab(rgb) in
+    let lch = lab.lab_to_lch(l) in
+    let name = cn.nearest_name(rgb) in
+    let comp = rel.complement(rgb) in
+    let triad = rel.triadic(rgb) in
+    let analog = rel.analogous(rgb) in
+    let shades = rel.shades(rgb, 4) in
+    let tints  = rel.tints(rgb, 4) in
+
+    let _ = io.println(str.concat(["hex:  ", jc.rgb_to_hex(rgb)])) in
+    let _ = io.println(str.concat(["name: ", name])) in
+    let _ = io.println(str.concat(["rgb:  ",
+      str.from_int(cast.int(rgb.r * 255.0 + 0.5)), " ",
+      str.from_int(cast.int(rgb.g * 255.0 + 0.5)), " ",
+      str.from_int(cast.int(rgb.b * 255.0 + 0.5))])) in
+    let _ = io.println(str.concat(["hsv:  h=", str.from_float(h.h),
+      " s=", str.from_float(h.s), " v=", str.from_float(h.v)])) in
+    let _ = io.println(str.concat(["lab:  l=", str.from_float(l.l),
+      " a=", str.from_float(l.a), " b=", str.from_float(l.b)])) in
+    let _ = io.println(str.concat(["lch:  l=", str.from_float(lch.l),
+      " c=", str.from_float(lch.c), " h=", str.from_float(lch.h)])) in
+    let _ = io.println(str.concat(["complement: ", jc.rgb_to_hex(comp),
+      " (", cn.nearest_name(comp), ")"])) in
+    let _ = io.println(str.concat(["triadic:    ",
+      jc.rgb_to_hex(list.get(triad, 1)), " (", cn.nearest_name(list.get(triad, 1)), ")  ",
+      jc.rgb_to_hex(list.get(triad, 2)), " (", cn.nearest_name(list.get(triad, 2)), ")"])) in
+    let _ = io.println(str.concat(["analogous:  ",
+      jc.rgb_to_hex(list.get(analog, 0)), " (", cn.nearest_name(list.get(analog, 0)), ")  ",
+      jc.rgb_to_hex(list.get(analog, 2)), " (", cn.nearest_name(list.get(analog, 2)), ")"])) in
+    let _ = io.println("shades:") in
+    let _ = list.fold(shades, 0, fn(_, s) {
+      io.println(str.concat(["  ", jc.rgb_to_hex(s), " (", cn.nearest_name(s), ")"]))
+    }) in
+    let _ = io.println("tints:") in
+    let _ = list.fold(tints, 0, fn(_, s) {
+      io.println(str.concat(["  ", jc.rgb_to_hex(s), " (", cn.nearest_name(s), ")"]))
+    }) in
+    io.println("")
+}
+
+main()
