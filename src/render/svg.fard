@@ -1,0 +1,33 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/fs") as fs
+import("../export/json_catalogue") as jc
+
+fn color_swatch_svg(colours, cols, cell_w, cell_h) {
+ let n = list.len(colours) in
+ let rows = (n + cols - 1) / cols in
+ let width = cols * cell_w in
+ let height = rows * cell_h in
+ let header = str.concat(["<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"",
+   str.from_int(width), "\" height=\"", str.from_int(height), "\">\n"]) in
+ let rects = list.build(n, fn(i) {
+   let rgb = list.get(colours, i) in
+   let x = (i % cols) * cell_w in
+   let y = (i / cols) * cell_h in
+   let hex = jc.rgb_to_hex(rgb) in
+   str.concat(["  <rect x=\"", str.from_int(x), "\" y=\"", str.from_int(y),
+     "\" width=\"", str.from_int(cell_w), "\" height=\"", str.from_int(cell_h),
+     "\" fill=\"", hex, "\"/>\n"])
+ }) in
+ str.concat([header, str.join(rects, ""), "</svg>\n"])
+}
+
+fn write_svg(colours, cols, cell_w, cell_h, path) {
+ fs.write_text(path, color_swatch_svg(colours, cols, cell_w, cell_h))
+}
+
+{
+ color_swatch_svg: color_swatch_svg,
+ write_svg: write_svg
+}

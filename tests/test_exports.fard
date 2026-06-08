@@ -1,0 +1,25 @@
+import("std/str") as str
+import("std/list") as list
+import("../src/core/types") as t
+import("../src/export/json_catalogue") as jc
+import("../src/export/css") as css
+import("../src/render/svg") as svg
+
+let red   = t.rgb_f(1.0, 0.0, 0.0)
+let green = t.rgb_f(0.0, 1.0, 0.0)
+let blue  = t.rgb_f(0.0, 0.0, 1.0)
+let palette = [red, green, blue]
+
+test "hex red"   { jc.rgb_to_hex(red)   == "#ff0000" }
+test "hex green" { jc.rgb_to_hex(green) == "#00ff00" }
+test "hex blue"  { jc.rgb_to_hex(blue)  == "#0000ff" }
+
+test "color entry has hex"  { str.starts_with(jc.color_entry(red).hex, "#") }
+test "color entry has name" { str.len(jc.color_entry(red).name) > 0 }
+test "color entry has lab"  { jc.color_entry(red).lab.l > 0.0 }
+
+test "css var contains rgb"  { str.contains(css.color_to_css_var(red), "rgb(") }
+test "css var contains name" { str.contains(css.color_to_css_var(red), "--color-") }
+
+test "svg contains svg tag" { str.contains(svg.color_swatch_svg(palette, 3, 40, 40), "<svg") }
+test "svg contains ff0000"  { str.contains(svg.color_swatch_svg(palette, 3, 40, 40), "#ff0000") }

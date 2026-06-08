@@ -1,0 +1,32 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/fs") as fs
+import("../core/color_name") as cn
+import("../export/json_catalogue") as jc
+
+fn rgb_to_css_var_name(rgb) {
+ let name = cn.nearest_name(rgb) in
+ let hex = jc.rgb_to_hex(rgb) in
+ str.concat(["--color-", str.replace(name, " ", "-"), "-", str.slice(hex, 1, 7)])
+}
+
+fn color_to_css_var(rgb) {
+ let name = rgb_to_css_var_name(rgb) in
+ let r = cast.int(rgb.r * 255.0 + 0.5) in
+ let g = cast.int(rgb.g * 255.0 + 0.5) in
+ let b = cast.int(rgb.b * 255.0 + 0.5) in
+ str.concat(["  ", name, ": rgb(", str.from_int(r), ", ", str.from_int(g), ", ", str.from_int(b), ");"])
+}
+
+fn write_css(colours, path) {
+ let vars = list.map(colours, fn(rgb) { color_to_css_var(rgb) }) in
+ let body = str.join(vars, "\n") in
+ fs.write_text(path, str.concat([":root {\n", body, "\n}\n"]))
+}
+
+{
+ rgb_to_css_var_name: rgb_to_css_var_name,
+ color_to_css_var: color_to_css_var,
+ write_css: write_css
+}

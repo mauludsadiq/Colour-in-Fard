@@ -1,0 +1,58 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/json") as json
+import("std/fs") as fs
+import("../core/types") as t
+import("../core/rgb_hsv") as hsv
+import("../core/rgb_lab") as lab
+import("../core/color_name") as cn
+
+fn int_to_hex_char(n) {
+ if n < 10 then str.from_int(n)
+ else if n == 10 then "a"
+ else if n == 11 then "b"
+ else if n == 12 then "c"
+ else if n == 13 then "d"
+ else if n == 14 then "e"
+ else "f"
+}
+
+fn byte_to_hex(n) {
+ str.concat([int_to_hex_char(n / 16), int_to_hex_char(n % 16)])
+}
+
+fn rgb_to_hex(rgb) {
+ let r = cast.int(rgb.r * 255.0 + 0.5) in
+ let g = cast.int(rgb.g * 255.0 + 0.5) in
+ let b = cast.int(rgb.b * 255.0 + 0.5) in
+ str.concat(["#", byte_to_hex(r), byte_to_hex(g), byte_to_hex(b)])
+}
+
+fn color_entry(rgb) {
+ let h = hsv.rgb_to_hsv(rgb) in
+ let l = lab.rgb_to_lab(rgb) in
+ let lch = lab.lab_to_lch(l) in
+ let r255 = cast.int(rgb.r * 255.0 + 0.5) in
+ let g255 = cast.int(rgb.g * 255.0 + 0.5) in
+ let b255 = cast.int(rgb.b * 255.0 + 0.5) in
+ {
+   hex:  rgb_to_hex(rgb),
+   name: cn.nearest_name(rgb),
+   rgb:  { r: r255, g: g255, b: b255 },
+   hsv:  { h: h.h, s: h.s, v: h.v },
+   lab:  { l: l.l, a: l.a, b: l.b },
+   lch:  { l: lch.l, c: lch.c, h: lch.h }
+ }
+}
+
+fn write_catalogue(colours, path) {
+ let entries = list.map(colours, fn(rgb) { color_entry(rgb) }) in
+ fs.write_text(path, json.encode(entries))
+}
+
+{
+ rgb_to_hex: rgb_to_hex,
+ color_entry: color_entry,
+ write_catalogue: write_catalogue
+}
