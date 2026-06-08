@@ -1,0 +1,121 @@
+import("std/list") as list
+import("../core/types") as t
+import("../core/rgb_lab") as lab
+
+let named_colors = [
+  { name: "black",        rgb: t.rgb_f(0.0,    0.0,    0.0)    },
+  { name: "white",        rgb: t.rgb_f(1.0,    1.0,    1.0)    },
+  { name: "red",          rgb: t.rgb_f(1.0,    0.0,    0.0)    },
+  { name: "green",        rgb: t.rgb_f(0.0,    0.502,  0.0)    },
+  { name: "lime",         rgb: t.rgb_f(0.0,    1.0,    0.0)    },
+  { name: "blue",         rgb: t.rgb_f(0.0,    0.0,    1.0)    },
+  { name: "yellow",       rgb: t.rgb_f(1.0,    1.0,    0.0)    },
+  { name: "cyan",         rgb: t.rgb_f(0.0,    1.0,    1.0)    },
+  { name: "magenta",      rgb: t.rgb_f(1.0,    0.0,    1.0)    },
+  { name: "orange",       rgb: t.rgb_f(1.0,    0.647,  0.0)    },
+  { name: "pink",         rgb: t.rgb_f(1.0,    0.753,  0.796)  },
+  { name: "purple",       rgb: t.rgb_f(0.502,  0.0,    0.502)  },
+  { name: "brown",        rgb: t.rgb_f(0.647,  0.165,  0.165)  },
+  { name: "grey",         rgb: t.rgb_f(0.502,  0.502,  0.502)  },
+  { name: "silver",       rgb: t.rgb_f(0.753,  0.753,  0.753)  },
+  { name: "gold",         rgb: t.rgb_f(1.0,    0.843,  0.0)    },
+  { name: "beige",        rgb: t.rgb_f(0.961,  0.961,  0.863)  },
+  { name: "ivory",        rgb: t.rgb_f(1.0,    1.0,    0.941)  },
+  { name: "cream",        rgb: t.rgb_f(1.0,    0.992,  0.816)  },
+  { name: "lavender",     rgb: t.rgb_f(0.902,  0.902,  0.980)  },
+  { name: "violet",       rgb: t.rgb_f(0.933,  0.510,  0.933)  },
+  { name: "indigo",       rgb: t.rgb_f(0.294,  0.0,    0.510)  },
+  { name: "teal",         rgb: t.rgb_f(0.0,    0.502,  0.502)  },
+  { name: "navy",         rgb: t.rgb_f(0.0,    0.0,    0.502)  },
+  { name: "maroon",       rgb: t.rgb_f(0.502,  0.0,    0.0)    },
+  { name: "olive",        rgb: t.rgb_f(0.502,  0.502,  0.0)    },
+  { name: "coral",        rgb: t.rgb_f(1.0,    0.498,  0.314)  },
+  { name: "salmon",       rgb: t.rgb_f(0.980,  0.502,  0.447)  },
+  { name: "crimson",      rgb: t.rgb_f(0.863,  0.078,  0.235)  },
+  { name: "scarlet",      rgb: t.rgb_f(1.0,    0.137,  0.0)    },
+  { name: "ruby",         rgb: t.rgb_f(0.878,  0.067,  0.373)  },
+  { name: "rose",         rgb: t.rgb_f(1.0,    0.0,    0.502)  },
+  { name: "hotpink",      rgb: t.rgb_f(1.0,    0.412,  0.706)  },
+  { name: "fuchsia",      rgb: t.rgb_f(1.0,    0.0,    1.0)    },
+  { name: "plum",         rgb: t.rgb_f(0.867,  0.627,  0.867)  },
+  { name: "orchid",       rgb: t.rgb_f(0.855,  0.439,  0.839)  },
+  { name: "lilac",        rgb: t.rgb_f(0.784,  0.635,  0.784)  },
+  { name: "periwinkle",   rgb: t.rgb_f(0.800,  0.800,  1.0)    },
+  { name: "cobalt",       rgb: t.rgb_f(0.0,    0.278,  0.671)  },
+  { name: "sapphire",     rgb: t.rgb_f(0.059,  0.322,  0.729)  },
+  { name: "cerulean",     rgb: t.rgb_f(0.0,    0.482,  0.655)  },
+  { name: "sky blue",     rgb: t.rgb_f(0.529,  0.808,  0.922)  },
+  { name: "aqua",         rgb: t.rgb_f(0.0,    1.0,    1.0)    },
+  { name: "turquoise",    rgb: t.rgb_f(0.251,  0.878,  0.816)  },
+  { name: "mint",         rgb: t.rgb_f(0.741,  0.989,  0.780)  },
+  { name: "emerald",      rgb: t.rgb_f(0.314,  0.784,  0.471)  },
+  { name: "forest green", rgb: t.rgb_f(0.133,  0.545,  0.133)  },
+  { name: "sage",         rgb: t.rgb_f(0.678,  0.737,  0.561)  },
+  { name: "chartreuse",   rgb: t.rgb_f(0.498,  1.0,    0.0)    },
+  { name: "yellow green", rgb: t.rgb_f(0.604,  0.804,  0.196)  },
+  { name: "khaki",        rgb: t.rgb_f(0.941,  0.902,  0.549)  },
+  { name: "tan",          rgb: t.rgb_f(0.824,  0.706,  0.549)  },
+  { name: "sand",         rgb: t.rgb_f(0.761,  0.698,  0.502)  },
+  { name: "caramel",      rgb: t.rgb_f(0.800,  0.502,  0.200)  },
+  { name: "chocolate",    rgb: t.rgb_f(0.482,  0.247,  0.0)    },
+  { name: "sienna",       rgb: t.rgb_f(0.627,  0.322,  0.176)  },
+  { name: "mahogany",     rgb: t.rgb_f(0.753,  0.251,  0.0)    },
+  { name: "rust",         rgb: t.rgb_f(0.718,  0.255,  0.055)  },
+  { name: "terracotta",   rgb: t.rgb_f(0.886,  0.447,  0.357)  },
+  { name: "peach",        rgb: t.rgb_f(1.0,    0.855,  0.725)  },
+  { name: "apricot",      rgb: t.rgb_f(0.984,  0.808,  0.694)  },
+  { name: "amber",        rgb: t.rgb_f(1.0,    0.749,  0.0)    },
+  { name: "mustard",      rgb: t.rgb_f(1.0,    0.859,  0.341)  },
+  { name: "lemon",        rgb: t.rgb_f(1.0,    0.969,  0.0)    },
+  { name: "lime green",   rgb: t.rgb_f(0.196,  0.804,  0.196)  },
+  { name: "jade",         rgb: t.rgb_f(0.0,    0.659,  0.420)  },
+  { name: "pine",         rgb: t.rgb_f(0.169,  0.427,  0.271)  },
+  { name: "hunter green", rgb: t.rgb_f(0.212,  0.369,  0.231)  },
+  { name: "midnight blue",rgb: t.rgb_f(0.098,  0.098,  0.439)  },
+  { name: "charcoal",     rgb: t.rgb_f(0.212,  0.271,  0.310)  },
+  { name: "slate",        rgb: t.rgb_f(0.439,  0.502,  0.565)  },
+  { name: "steel blue",   rgb: t.rgb_f(0.275,  0.510,  0.706)  },
+  { name: "powder blue",  rgb: t.rgb_f(0.690,  0.878,  0.902)  },
+  { name: "ice blue",     rgb: t.rgb_f(0.871,  0.949,  0.980)  },
+  { name: "bone",         rgb: t.rgb_f(0.890,  0.855,  0.788)  },
+  { name: "linen",        rgb: t.rgb_f(0.980,  0.941,  0.902)  },
+  { name: "snow",         rgb: t.rgb_f(1.0,    0.980,  0.980)  },
+  { name: "ash",          rgb: t.rgb_f(0.698,  0.745,  0.710)  },
+  { name: "taupe",        rgb: t.rgb_f(0.561,  0.482,  0.420)  },
+  { name: "mauve",        rgb: t.rgb_f(0.878,  0.690,  0.812)  },
+  { name: "wine",         rgb: t.rgb_f(0.451,  0.082,  0.165)  },
+  { name: "burgundy",     rgb: t.rgb_f(0.502,  0.0,    0.125)  },
+  { name: "oxblood",      rgb: t.rgb_f(0.400,  0.0,    0.067)  },
+  { name: "copper",       rgb: t.rgb_f(0.722,  0.451,  0.200)  },
+  { name: "bronze",       rgb: t.rgb_f(0.804,  0.498,  0.196)  },
+  { name: "champagne",    rgb: t.rgb_f(0.970,  0.910,  0.761)  },
+  { name: "ecru",         rgb: t.rgb_f(0.761,  0.698,  0.561)  },
+  { name: "buff",         rgb: t.rgb_f(0.941,  0.863,  0.510)  }
+]
+
+let named_labs = list.map(named_colors, fn(entry) {
+  { name: entry.name, lab: lab.rgb_to_lab(entry.rgb), rgb: entry.rgb }
+})
+
+fn nearest_name(rgb) {
+  let target_lab = lab.rgb_to_lab(rgb) in
+  let result = list.fold(named_labs, { name: "unknown", dist: 1000000.0 }, fn(acc, entry) {
+    let d = lab.delta_e(target_lab, entry.lab) in
+    if d < acc.dist then { name: entry.name, dist: d } else acc
+  }) in
+  result.name
+}
+
+fn nearest_name_with_dist(rgb) {
+  let target_lab = lab.rgb_to_lab(rgb) in
+  list.fold(named_labs, { name: "unknown", dist: 1000000.0, rgb: rgb }, fn(acc, entry) {
+    let d = lab.delta_e(target_lab, entry.lab) in
+    if d < acc.dist then { name: entry.name, dist: d, rgb: entry.rgb } else acc
+  })
+}
+
+{
+  named_colors: named_colors,
+  nearest_name: nearest_name,
+  nearest_name_with_dist: nearest_name_with_dist
+}

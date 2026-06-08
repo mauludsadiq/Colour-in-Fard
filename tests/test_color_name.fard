@@ -1,0 +1,8 @@
+import("../src/core/color_name") as cn
+import("../src/core/types") as t
+
+test "red names as red"     { cn.nearest_name(t.rgb_f(1.0, 0.0, 0.0)) == "red" }
+test "white names as white" { cn.nearest_name(t.rgb_f(1.0, 1.0, 1.0)) == "white" }
+test "black names as black" { cn.nearest_name(t.rgb_f(0.0, 0.0, 0.0)) == "black" }
+test "navy names as navy"   { cn.nearest_name(t.rgb_f(0.0, 0.0, 0.5)) == "navy" }
+test "orange names as orange" { cn.nearest_name(t.rgb_f(1.0, 0.5, 0.0)) == "orange" }
