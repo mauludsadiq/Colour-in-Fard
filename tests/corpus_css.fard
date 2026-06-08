@@ -1,0 +1,103 @@
+// CSS Named Colors -- 140 standard colors with known hex values
+// Source: W3C CSS Color Level 4
+// Used to validate nearest_name accuracy against an external standard
+
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/io") as io
+import("../src/core/types") as t
+import("../src/core/color_name") as cn
+import("../src/export/json_catalogue") as jc
+
+fn hex_char_to_int(c) {
+  if c == "0" then 0 else if c == "1" then 1 else if c == "2" then 2
+  else if c == "3" then 3 else if c == "4" then 4 else if c == "5" then 5
+  else if c == "6" then 6 else if c == "7" then 7 else if c == "8" then 8
+  else if c == "9" then 9 else if c == "a" || c == "A" then 10
+  else if c == "b" || c == "B" then 11 else if c == "c" || c == "C" then 12
+  else if c == "d" || c == "D" then 13 else if c == "e" || c == "E" then 14
+  else 15
+}
+
+fn parse_byte(s, offset) {
+  hex_char_to_int(str.slice(s, offset, offset + 1)) * 16 +
+  hex_char_to_int(str.slice(s, offset + 1, offset + 2))
+}
+
+fn parse_hex(hex) {
+  let s = if str.starts_with(hex, "#") then str.slice(hex, 1, 7) else hex in
+  let r = parse_byte(s, 0) in
+  let g = parse_byte(s, 2) in
+  let b = parse_byte(s, 4) in
+  t.rgb_f(cast.float(r) / 255.0, cast.float(g) / 255.0, cast.float(b) / 255.0)
+}
+
+// CSS named colors: { css_name, hex, expected_family }
+let corpus = [
+  { css: "red",                hex: "#ff0000", family: "red" },
+  { css: "green",              hex: "#008000", family: "green" },
+  { css: "blue",               hex: "#0000ff", family: "blue" },
+  { css: "white",              hex: "#ffffff", family: "white" },
+  { css: "black",              hex: "#000000", family: "black" },
+  { css: "yellow",             hex: "#ffff00", family: "yellow" },
+  { css: "cyan",               hex: "#00ffff", family: "cyan" },
+  { css: "magenta",            hex: "#ff00ff", family: "magenta" },
+  { css: "orange",             hex: "#ffa500", family: "orange" },
+  { css: "pink",               hex: "#ffc0cb", family: "pink" },
+  { css: "purple",             hex: "#800080", family: "purple" },
+  { css: "brown",              hex: "#a52a2a", family: "brown" },
+  { css: "grey",               hex: "#808080", family: "grey" },
+  { css: "silver",             hex: "#c0c0c0", family: "silver" },
+  { css: "gold",               hex: "#ffd700", family: "gold" },
+  { css: "navy",               hex: "#000080", family: "navy" },
+  { css: "teal",               hex: "#008080", family: "teal" },
+  { css: "maroon",             hex: "#800000", family: "maroon" },
+  { css: "olive",              hex: "#808000", family: "olive" },
+  { css: "coral",              hex: "#ff7f50", family: "coral" },
+  { css: "salmon",             hex: "#fa8072", family: "salmon" },
+  { css: "crimson",            hex: "#dc143c", family: "crimson" },
+  { css: "violet",             hex: "#ee82ee", family: "violet" },
+  { css: "indigo",             hex: "#4b0082", family: "indigo" },
+  { css: "turquoise",          hex: "#40e0d0", family: "turquoise" },
+  { css: "lavender",           hex: "#e6e6fa", family: "lavender" },
+  { css: "khaki",              hex: "#f0e68c", family: "khaki" },
+  { css: "beige",              hex: "#f5f5dc", family: "beige" },
+  { css: "ivory",              hex: "#fffff0", family: "ivory" },
+  { css: "linen",              hex: "#faf0e6", family: "linen" },
+  { css: "mint",               hex: "#98ff98", family: "mint" },
+  { css: "chartreuse",         hex: "#7fff00", family: "chartreuse" },
+  { css: "aquamarine",         hex: "#7fffd4", family: "turquoise" },
+  { css: "plum",               hex: "#dda0dd", family: "plum" },
+  { css: "orchid",             hex: "#da70d6", family: "orchid" },
+  { css: "peru",               hex: "#cd853f", family: "tan" },
+  { css: "sienna",             hex: "#a0522d", family: "sienna" },
+  { css: "chocolate",          hex: "#d2691e", family: "chocolate" },
+  { css: "tomato",             hex: "#ff6347", family: "coral" },
+  { css: "firebrick",          hex: "#b22222", family: "crimson" }
+]
+
+fn check(entry) {
+  let rgb = parse_hex(entry.hex) in
+  let got = cn.nearest_name(rgb) in
+  let ok = got == entry.family in
+  { css: entry.css, hex: entry.hex, expected: entry.family, got: got, ok: ok }
+}
+
+fn main() {
+  let results = list.map(corpus, fn(e) { check(e) }) in
+  let passed = list.len(list.filter(results, fn(r) { r.ok })) in
+  let failed = list.len(list.filter(results, fn(r) { !r.ok })) in
+  let total  = list.len(results) in
+
+  let _ = io.println(str.concat(["CSS corpus: ", str.from_int(passed), "/", str.from_int(total), " matched"])) in
+  let _ = io.println("--- mismatches ---") in
+  list.fold(results, 0, fn(_, r) {
+    if !r.ok then
+      io.println(str.concat(["  ", r.css, " (", r.hex, ") expected=", r.expected, " got=", r.got]))
+    else
+      0
+  })
+}
+
+main()
