@@ -1,0 +1,125 @@
+import("std/list") as list
+import("../src/core/types") as t
+import("../src/core/rgb_lab") as lab
+import("../src/core/rgb_hsv") as hsv
+import("../src/core/math") as m
+import("../src/core/color_relations") as rel
+
+fn close(a, b) { m.absf(a - b) < 0.001 }
+
+fn hue_dist(h1, h2) {
+  let d = m.absf(m.mod360(h1 - h2)) in
+  if d > 180.0 then 360.0 - d else d
+}
+
+// --- Grayscale axis ---
+
+test "black has zero chroma" {
+  let lch = lab.lab_to_lch(lab.rgb_to_lab(t.rgb_f(0.0, 0.0, 0.0))) in
+  lch.c < 0.001
+}
+
+test "white has zero chroma" {
+  let lch = lab.lab_to_lch(lab.rgb_to_lab(t.rgb_f(1.0, 1.0, 1.0))) in
+  lch.c < 0.01
+}
+
+test "mid grey has zero chroma" {
+  let lch = lab.lab_to_lch(lab.rgb_to_lab(t.rgb_f(0.5, 0.5, 0.5))) in
+  lch.c < 0.001
+}
+
+test "greyscale lightness is monotone" {
+  let l0 = lab.rgb_to_lab(t.rgb_f(0.0,  0.0,  0.0)).l in
+  let l1 = lab.rgb_to_lab(t.rgb_f(0.25, 0.25, 0.25)).l in
+  let l2 = lab.rgb_to_lab(t.rgb_f(0.5,  0.5,  0.5)).l in
+  let l3 = lab.rgb_to_lab(t.rgb_f(0.75, 0.75, 0.75)).l in
+  let l4 = lab.rgb_to_lab(t.rgb_f(1.0,  1.0,  1.0)).l in
+  l0 < l1 && l1 < l2 && l2 < l3 && l3 < l4
+}
+
+// --- Hue wraparound ---
+
+test "red and near-red have small hue distance" {
+  let h1 = lab.lab_to_lch(lab.rgb_to_lab(t.rgb_f(1.0, 0.0,  0.0))).h in
+  let h2 = lab.lab_to_lch(lab.rgb_to_lab(t.rgb_f(1.0, 0.05, 0.0))).h in
+  hue_dist(h1, h2) < 10.0
+}
+
+test "hue wraps at 360" {
+  let h = lab.lab_to_lch(lab.rgb_to_lab(t.rgb_f(1.0, 0.0, 0.05))).h in
+  h >= 0.0 && h < 360.0
+}
+
+test "complement hues are ~180 apart in LCH" {
+  let rgb  = t.rgb_f(0.5, 0.8, 0.3) in
+  let lch1 = lab.rgb_to_lch(rgb) in
+  let lch2 = lab.rgb_to_lch(rel.complement(rgb)) in
+  let dist = hue_dist(lch1.h, lch2.h) in
+  m.absf(dist - 180.0) < 40.0
+}
+
+// --- Adjacent colours ---
+
+test "adjacent RGB values have small delta-e" {
+  let c1 = t.rgb_f(0.5,   0.5, 0.5) in
+  let c2 = t.rgb_f(0.502, 0.5, 0.5) in
+  let de = lab.delta_e(lab.rgb_to_lab(c1), lab.rgb_to_lab(c2)) in
+  de < 1.0
+}
+
+test "same hue different chroma have same hue angle" {
+  let c1 = t.rgb_f(1.0, 0.0, 0.0) in
+  let c2 = t.rgb_f(0.5, 0.0, 0.0) in
+  let h1 = lab.lab_to_lch(lab.rgb_to_lab(c1)).h in
+  let h2 = lab.lab_to_lch(lab.rgb_to_lab(c2)).h in
+  hue_dist(h1, h2) < 5.0
+}
+
+test "same LAB deltaE can have different RGB distance" {
+  let grey1  = t.rgb_f(0.5,  0.5,  0.5) in
+  let grey2  = t.rgb_f(0.51, 0.51, 0.51) in
+  let color1 = t.rgb_f(0.5,  0.0,  0.0) in
+  let color2 = t.rgb_f(0.51, 0.0,  0.0) in
+  let de_grey  = lab.delta_e(lab.rgb_to_lab(grey1),  lab.rgb_to_lab(grey2)) in
+  let de_color = lab.delta_e(lab.rgb_to_lab(color1), lab.rgb_to_lab(color2)) in
+  m.absf(de_grey - de_color) > 0.0
+}
+
+// --- Low light colours ---
+
+test "very dark red has positive L" {
+  let l = lab.rgb_to_lab(t.rgb_f(0.05, 0.0, 0.0)).l in
+  l > 0.0
+}
+
+test "very dark colours are distinguishable in LAB" {
+  let c1 = lab.rgb_to_lab(t.rgb_f(0.02, 0.0,  0.0)) in
+  let c2 = lab.rgb_to_lab(t.rgb_f(0.0,  0.02, 0.0)) in
+  lab.delta_e(c1, c2) > 0.0
+}
+
+// --- Chroma boundary ---
+
+test "fully saturated colours have higher chroma than desaturated" {
+  let sat   = lab.lab_to_lch(lab.rgb_to_lab(t.rgb_f(1.0, 0.0, 0.0))).c in
+  let desat = lab.lab_to_lch(lab.rgb_to_lab(t.rgb_f(0.6, 0.4, 0.4))).c in
+  sat > desat
+}
+
+test "tones reduce chroma monotonically" {
+  let tones = rel.tones(t.rgb_f(1.0, 0.0, 0.0), 4) in
+  let c0 = lab.lab_to_lch(lab.rgb_to_lab(list.get(tones, 0))).c in
+  let c1 = lab.lab_to_lch(lab.rgb_to_lab(list.get(tones, 1))).c in
+  let c2 = lab.lab_to_lch(lab.rgb_to_lab(list.get(tones, 2))).c in
+  let c3 = lab.lab_to_lch(lab.rgb_to_lab(list.get(tones, 3))).c in
+  c0 >= c1 && c1 >= c2 && c2 >= c3
+}
+
+test "primary colours have highest chroma among RGB extremes" {
+  let red   = lab.lab_to_lch(lab.rgb_to_lab(t.rgb_f(1.0, 0.0, 0.0))).c in
+  let green = lab.lab_to_lch(lab.rgb_to_lab(t.rgb_f(0.0, 1.0, 0.0))).c in
+  let blue  = lab.lab_to_lch(lab.rgb_to_lab(t.rgb_f(0.0, 0.0, 1.0))).c in
+  let grey  = lab.lab_to_lch(lab.rgb_to_lab(t.rgb_f(0.5, 0.5, 0.5))).c in
+  red > grey && green > grey && blue > grey
+}
