@@ -1,0 +1,38 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/io") as io
+import("std/cli") as cli
+import("../src/core/types") as t
+import("../src/core/cube") as cube
+import("../src/export/json_catalogue") as jc
+import("../src/export/css") as css
+import("../src/render/svg") as svg
+
+fn main() {
+  let args = cli.args() in
+  let k = if list.len(args) > 0 then cast.int(list.get(args, 0)) else 20 in
+
+  let _ = io.println(str.concat(["generating catalogue for K=", str.from_int(k), "..."])) in
+
+  let palette = cube.enumerate_cube_palette(k) in
+  let colours = list.map(palette, fn(c) { cube.color_i_to_rgb_f(c, k) }) in
+  let n = list.len(colours) in
+  let _ = io.println(str.concat([str.from_int(n), " colours"])) in
+
+  let json_path = str.concat(["out/catalogue_K", str.from_int(k), ".json"]) in
+  let css_path  = str.concat(["out/catalogue_K", str.from_int(k), ".css"]) in
+  let svg_path  = str.concat(["out/catalogue_K", str.from_int(k), ".svg"]) in
+
+  let _ = jc.write_catalogue(colours, json_path) in
+  let _ = io.println(str.concat(["wrote ", json_path])) in
+
+  let _ = css.write_css(colours, css_path) in
+  let _ = io.println(str.concat(["wrote ", css_path])) in
+
+  let cols = cast.int(cast.float(n) / 10.0) + 1 in
+  let _ = svg.write_svg(colours, cols, 10, 10, svg_path) in
+  io.println(str.concat(["wrote ", svg_path]))
+}
+
+main()
