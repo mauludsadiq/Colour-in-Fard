@@ -1,21 +1,15 @@
 import("std/list") as list
 import("std/str") as str
 import("std/cast") as cast
+import("std/io") as io
+import("std/json") as json
 import("../src/core/simplex") as simplex
 import("../src/core/rgb_hsv") as hsv
 
 fn has_int(xs, x) {
-  let i = 0 in
-  let ok = false in
-  while i < list.len(xs) {
-    if list.get(xs, i) == x then
-      ok = true
-    else
-      0
-    
-    i = i + 1
-  }
-  ok
+  list.fold(list.range(0, list.len(xs)), false, fn(acc, i) {
+    if acc then true else list.get(xs, i) == x
+  })
 }
 
 fn append_unique_int(xs, x) {
@@ -24,25 +18,21 @@ fn append_unique_int(xs, x) {
 
 fn report_k(k) {
   let pts = simplex.enumerate_simplex_boundary(k) in
-  let hues = [] in
-  let i = 0 in
-  while i < list.len(pts) {
+  let hues = list.fold(list.range(0, list.len(pts)), [], fn(acc, i) {
     let c = list.get(pts, i) in
     let rgb = simplex.color_i_to_rgb_f(c, k) in
     let h = cast.int(hsv.rgb_to_hsv(rgb).h + 0.5) in
-    hues = append_unique_int(hues, h)
-    i = i + 1
-  }
-
-  io.println("## K = " + str.from_int(k))
-  io.println("H_" + str.from_int(k) + " = " + str.from_int(list.len(hues)))
-  io.println(json.encode(hues))
+    append_unique_int(acc, h)
+  }) in
+  let _ = io.println(str.concat("## K = ", str.from_int(k))) in
+  let _ = io.println(str.concat("H_", str.concat(str.from_int(k), str.concat(" = ", str.from_int(list.len(hues)))))) in
+  let _ = io.println(json.encode(hues)) in
   io.println("---")
 }
 
 fn main() {
-  report_k(3)
-  report_k(4)
+  let _ = report_k(3) in
+  let _ = report_k(4) in
   report_k(5)
 }
 

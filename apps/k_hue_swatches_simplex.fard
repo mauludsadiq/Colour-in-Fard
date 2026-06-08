@@ -1,43 +1,43 @@
 import("std/list") as list
 import("std/str") as str
 import("std/cast") as cast
+import("std/io") as io
 import("../src/core/simplex") as simplex
 import("../src/core/rgb_hsv") as hsv
 import("../src/render/swatch") as swatch
-import("../render/ppm") as ppm
+import("../src/render/ppm") as ppm
+
+fn has_int(xs, x) {
+  list.fold(list.range(0, list.len(xs)), false, fn(acc, i) {
+    if acc then true else list.get(xs, i) == x
+  })
+}
 
 fn hue_representatives(k) {
   let pts = simplex.enumerate_simplex_boundary(k) in
-  let seen = {} in
-  let out = [] in
-  let i = 0 in
-  while i < list.len(pts) {
+  let state = list.fold(list.range(0, list.len(pts)), { hues: [], rgbs: [] }, fn(acc, i) {
     let c = list.get(pts, i) in
     let rgb = simplex.color_i_to_rgb_f(c, k) in
     let h = cast.int(hsv.rgb_to_hsv(rgb).h + 0.5) in
-    let key = str.from_int(h) in
-    if !rec.has(seen, key) then
-      seen = rec.set(seen, key, true)
-      out = list.append(out, rgb)
+    if has_int(acc.hues, h) then
+      acc
     else
-      0
-    
-    i = i + 1
-  }
-  out
+      { hues: list.append(acc.hues, h), rgbs: list.append(acc.rgbs, rgb) }
+  }) in
+  state.rgbs
 }
 
 fn write_k(k) {
   let reps = hue_representatives(k) in
   let img = swatch.swatch_row(reps, 40, 40) in
-  let out = "out/K" + str.from_int(k) + "_swatches_simplex.ppm" in
-  ppm.save_ppm(img, out)
-  io.println("wrote " + out)
+  let out = str.concat("out/K", str.concat(str.from_int(k), "_swatches_simplex.ppm")) in
+  let _ = ppm.save_ppm(img, out) in
+  io.println(str.concat("wrote ", out))
 }
 
 fn main() {
-  write_k(3)
-  write_k(4)
+  let _ = write_k(3) in
+  let _ = write_k(4) in
   write_k(5)
 }
 

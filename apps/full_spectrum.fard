@@ -1,0 +1,58 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/fs") as fs
+import("std/io") as io
+import("std/cli") as cli
+
+fn main() {
+  let args = cli.args() in
+  let k = if list.len(args) > 0 then cast.int(list.get(args, 0)) else 255 in
+  let n = k + 1 in
+  let total = n * n * n in
+  let out = str.concat(["out/full_spectrum_K", str.from_int(k), ".ppm"]) in
+
+  let header = str.concat(["P3\n", str.from_int(total), " 1\n255\n"]) in
+  let _ = fs.write_text(out, header) in
+
+  let chunk = 1000 in
+  let chunks = total / chunk in
+
+  let _ = list.fold(list.range(0, chunks), 0, fn(acc, ci) {
+    let start = ci * chunk in
+    let pixels = list.build(chunk, fn(j) {
+      let i = start + j in
+      let ri = i / (n * n) in
+      let gi = (i / n) % n in
+      let bi = i % n in
+      let r = cast.int(cast.float(ri) * 255.0 / cast.float(k)) in
+      let g = cast.int(cast.float(gi) * 255.0 / cast.float(k)) in
+      let b = cast.int(cast.float(bi) * 255.0 / cast.float(k)) in
+      str.concat([str.from_int(r), " ", str.from_int(g), " ", str.from_int(b)])
+    }) in
+    let _ = io.append_file(out, str.concat([str.join(pixels, "\n"), "\n"])) in
+    acc
+  }) in
+
+  let remainder = total % chunk in
+  let _ = if remainder > 0 then
+    let start = chunks * chunk in
+    let pixels = list.build(remainder, fn(j) {
+      let i = start + j in
+      let ri = i / (n * n) in
+      let gi = (i / n) % n in
+      let bi = i % n in
+      let r = cast.int(cast.float(ri) * 255.0 / cast.float(k)) in
+      let g = cast.int(cast.float(gi) * 255.0 / cast.float(k)) in
+      let b = cast.int(cast.float(bi) * 255.0 / cast.float(k)) in
+      str.concat([str.from_int(r), " ", str.from_int(g), " ", str.from_int(b)])
+    }) in
+    io.append_file(out, str.concat([str.join(pixels, "\n"), "\n"]))
+  else
+    null
+  in
+
+  io.println(str.concat(["wrote ", out]))
+}
+
+main()

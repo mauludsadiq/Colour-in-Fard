@@ -43,11 +43,12 @@ fn quantize(q, rgb) {
 fn project_rgb(q, rgb) {
   let c = quantize(q, rgb) in
   let kf = cast.float(q.k) in
-  t.rgb_f(c.r / kf, c.g / kf, c.b / kf)
+  t.rgb_f(cast.float(c.r) / kf, cast.float(c.g) / kf, cast.float(c.b) / kf)
 }
 
 fn idem_state_new(q, samples, eps) {
-  { q: q, samples: samples, eps: eps, i: 0, ok: true, done: false }
+  let n = if samples < 2 then 2 else samples in
+  { q: q, samples: n, eps: eps, i: 0, ok: true, done: false }
 }
 
 fn idem_cond(s) {
@@ -55,13 +56,15 @@ fn idem_cond(s) {
 }
 
 fn idem_step(s) {
-  let rgb =
-    if s.i % 5 == 0 then t.rgb_f(1.0, 0.0, 0.0)
-    else if s.i % 5 == 1 then t.rgb_f(0.0, 1.0, 0.0)
-    else if s.i % 5 == 2 then t.rgb_f(0.0, 0.0, 1.0)
-    else if s.i % 5 == 3 then t.rgb_f(0.8, 0.3, 0.1)
-    else t.rgb_f(0.2, 0.7, 0.5)
-  in
+  let n = s.samples in
+  let nf = cast.float(n) in
+  let ri = s.i % n in
+  let gi = (s.i / n) % n in
+  let bi = (s.i / (n * n)) % n in
+  let rf = cast.float(ri) / (nf - 1.0) in
+  let gf = cast.float(gi) / (nf - 1.0) in
+  let bf = cast.float(bi) / (nf - 1.0) in
+  let rgb = t.rgb_f(rf, gf, bf) in
   let p1 = project_rgb(s.q, rgb) in
   let p2 = project_rgb(s.q, p1) in
   let d0 = m.absf(p1.r - p2.r) in
@@ -69,7 +72,7 @@ fn idem_step(s) {
   let d2 = m.absf(p1.b - p2.b) in
   let ok1 = s.ok && !(d0 > s.eps || d1 > s.eps || d2 > s.eps) in
   let i1 = s.i + 1 in
-  if i1 < s.samples then
+  if i1 < n * n * n then
     { q: s.q, samples: s.samples, eps: s.eps, i: i1, ok: ok1, done: false }
   else
     { q: s.q, samples: s.samples, eps: s.eps, i: i1, ok: ok1, done: true }

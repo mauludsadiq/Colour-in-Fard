@@ -1,38 +1,21 @@
 import("std/list") as list
+import("std/cast") as cast
 import("../core/types") as t
 
-fn cube_state_new(k) {
-  { k: k, r: 0, g: 0, b: 0, out: [], done: false }
-}
-
-fn cube_cond(s) {
-  !s.done
-}
-
-fn cube_step(s) {
-  let out1 = list.append(s.out, t.color_i(s.r, s.g, s.b)) in
-  let b1 = s.b + 1 in
-  if b1 <= s.k then
-    { k: s.k, r: s.r, g: s.g, b: b1, out: out1, done: false }
-  else
-    let g1 = s.g + 1 in
-    if g1 <= s.k then
-      { k: s.k, r: s.r, g: g1, b: 0, out: out1, done: false }
-    else
-      let r1 = s.r + 1 in
-      if r1 <= s.k then
-        { k: s.k, r: r1, g: 0, b: 0, out: out1, done: false }
-      else
-        { k: s.k, r: s.r, g: s.g, b: s.b, out: out1, done: true }
-}
-
 fn enumerate_cube_palette(k) {
-  let w = while cube_state_new(k) cube_cond cube_step in
-  w.value.out
+  let total = (k + 1) * (k + 1) * (k + 1) in
+  list.build(total, fn(i) {
+    let n = k + 1 in
+    let r = i / (n * n) in
+    let g = (i / n) % n in
+    let b = i % n in
+    t.color_i(r, g, b)
+  })
 }
 
 fn color_i_to_rgb_f(c, k) {
-  t.rgb_f(c.r / k, c.g / k, c.b / k)
+  let kf = cast.float(k) in
+  t.rgb_f(cast.float(c.r) / kf, cast.float(c.g) / kf, cast.float(c.b) / kf)
 }
 
 {

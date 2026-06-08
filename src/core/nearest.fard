@@ -2,27 +2,21 @@ import("std/list") as list
 import("../core/math") as m
 
 fn nearest_palette_color_rgbf(target, palette, k, to_rgb_fn) {
-  let i = 0 in
-  let best = null in
-  let best_d2 = 1000000000.0 in
-
-  while i < list.len(palette) {
+  let state = list.fold(list.range(0, list.len(palette)), { best: null, best_d2: 1000000000.0 }, fn(acc, i) {
     let c = list.get(palette, i) in
     let rgb = to_rgb_fn(c, k) in
     let dr = rgb.r - target.r in
     let dg = rgb.g - target.g in
     let db = rgb.b - target.b in
     let d2 = m.sq(dr) + m.sq(dg) + m.sq(db) in
-
-    if d2 < best_d2 then
-      best = c
-      best_d2 = d2
+    if d2 < acc.best_d2 then
+      { best: c, best_d2: d2 }
     else
-      0
-    
+      acc
+  }) in
+  state.best
+}
 
-    i = i + 1
-  }
-
-  best
+{
+  nearest_palette_color_rgbf: nearest_palette_color_rgbf
 }
