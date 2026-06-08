@@ -1,0 +1,27 @@
+import("std/io") as io
+import("std/str") as str
+import("std/math") as math
+import("../src/core/rgb_lab") as lab
+import("../src/core/types") as t
+import("../src/core/math") as m
+
+fn close(a, b) {
+  m.absf(a - b) < 0.0001
+}
+
+fn rgb_roundtrip_ok(rgb) {
+  let recovered = lab.lab_to_rgb(lab.rgb_to_lab(rgb)) in
+  close(rgb.r, recovered.r) && close(rgb.g, recovered.g) && close(rgb.b, recovered.b)
+}
+
+test "red roundtrip"   { rgb_roundtrip_ok(t.rgb_f(1.0, 0.0, 0.0)) }
+test "green roundtrip" { rgb_roundtrip_ok(t.rgb_f(0.0, 1.0, 0.0)) }
+test "blue roundtrip"  { rgb_roundtrip_ok(t.rgb_f(0.0, 0.0, 1.0)) }
+test "white roundtrip" { rgb_roundtrip_ok(t.rgb_f(1.0, 1.0, 1.0)) }
+test "black roundtrip" { rgb_roundtrip_ok(t.rgb_f(0.0, 0.0, 0.0)) }
+test "mid roundtrip"   { rgb_roundtrip_ok(t.rgb_f(0.5, 0.3, 0.8)) }
+test "lch roundtrip"   {
+  let rgb = t.rgb_f(0.8, 0.3, 0.1) in
+  let recovered = lab.lch_to_rgb(lab.rgb_to_lch(rgb)) in
+  close(rgb.r, recovered.r) && close(rgb.g, recovered.g) && close(rgb.b, recovered.b)
+}

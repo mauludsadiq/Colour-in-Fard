@@ -1,0 +1,20 @@
+import("std/io") as io
+import("std/str") as str
+import("std/json") as json
+import("../src/core/rgb_lab") as lab
+import("../src/core/types") as t
+
+let red   = lab.rgb_to_lab(t.rgb_f(1.0, 0.0, 0.0))
+let green = lab.rgb_to_lab(t.rgb_f(0.0, 1.0, 0.0))
+let blue  = lab.rgb_to_lab(t.rgb_f(0.0, 0.0, 1.0))
+let white = lab.rgb_to_lab(t.rgb_f(1.0, 1.0, 1.0))
+let black = lab.rgb_to_lab(t.rgb_f(0.0, 0.0, 0.0))
+
+let _ = io.println(str.concat(["red   LAB: ", json.encode(red)]))
+let _ = io.println(str.concat(["green LAB: ", json.encode(green)]))
+let _ = io.println(str.concat(["blue  LAB: ", json.encode(blue)]))
+let _ = io.println(str.concat(["white LAB: ", json.encode(white)]))
+let _ = io.println(str.concat(["black LAB: ", json.encode(black)]))
+
+let de = lab.delta_e(red, green)
+io.println(str.concat(["delta_e red-green: ", str.from_float(de)]))
