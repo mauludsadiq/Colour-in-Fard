@@ -1,0 +1,155 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/io") as io
+import("std/cli") as cli
+import("std/fs") as fs
+import("../src/core/types") as t
+import("../src/core/color_name") as cn
+import("../src/core/color_relations") as rel
+import("../src/export/json_catalogue") as jc
+
+fn hex_char_to_int(c) {
+  if c == "0" then 0
+  else if c == "1" then 1
+  else if c == "2" then 2
+  else if c == "3" then 3
+  else if c == "4" then 4
+  else if c == "5" then 5
+  else if c == "6" then 6
+  else if c == "7" then 7
+  else if c == "8" then 8
+  else if c == "9" then 9
+  else if c == "a" || c == "A" then 10
+  else if c == "b" || c == "B" then 11
+  else if c == "c" || c == "C" then 12
+  else if c == "d" || c == "D" then 13
+  else if c == "e" || c == "E" then 14
+  else 15
+}
+
+fn parse_byte(s, offset) {
+  hex_char_to_int(str.slice(s, offset, offset + 1)) * 16 +
+  hex_char_to_int(str.slice(s, offset + 1, offset + 2))
+}
+
+fn parse_hex(hex) {
+  let s = if str.starts_with(hex, "#") then str.slice(hex, 1, 7) else hex in
+  let r = parse_byte(s, 0) in
+  let g = parse_byte(s, 2) in
+  let b = parse_byte(s, 4) in
+  t.rgb_f(cast.float(r) / 255.0, cast.float(g) / 255.0, cast.float(b) / 255.0)
+}
+
+fn swatch(x, y, w, h, rgb, label) {
+  let hex = jc.rgb_to_hex(rgb) in
+  let text_y = y + h + 14 in
+  str.concat([
+    "  <rect x=\"", str.from_int(x), "\" y=\"", str.from_int(y),
+    "\" width=\"", str.from_int(w), "\" height=\"", str.from_int(h),
+    "\" fill=\"", hex, "\" stroke=\"#cccccc\" stroke-width=\"1\"/>\n",
+    "  <text x=\"", str.from_int(x + w / 2), "\" y=\"", str.from_int(text_y),
+    "\" text-anchor=\"middle\" font-family=\"monospace\" font-size=\"10\" fill=\"#333\">",
+    hex, "</text>\n",
+    "  <text x=\"", str.from_int(x + w / 2), "\" y=\"", str.from_int(text_y + 12),
+    "\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"9\" fill=\"#666\">",
+    label, "</text>\n"
+  ])
+}
+
+fn section_label(x, y, text) {
+  str.concat(["  <text x=\"", str.from_int(x), "\" y=\"", str.from_int(y),
+    "\" font-family=\"sans-serif\" font-size=\"11\" font-weight=\"bold\" fill=\"#444\">",
+    text, "</text>\n"])
+}
+
+fn main() {
+  let args = cli.args() in
+  if list.len(args) == 0 then
+    io.println("usage: relations <hex>  e.g. relations #ff6600")
+  else
+    let hex = list.get(args, 0) in
+    let rgb = parse_hex(hex) in
+    let name = cn.nearest_name(rgb) in
+
+    let comp    = rel.complement(rgb) in
+    let analog  = rel.analogous(rgb) in
+    let triad   = rel.triadic(rgb) in
+    let split   = rel.split_complementary(rgb) in
+    let tetra   = rel.tetradic(rgb) in
+    let shades5 = rel.shades(rgb, 5) in
+    let tints5  = rel.tints(rgb, 5) in
+    let tones5  = rel.tones(rgb, 5) in
+
+    let cw = 60 in
+    let ch = 50 in
+    let pad = 10 in
+    let col = cw + pad in
+    let svg_w = 500 in
+    let svg_h = 620 in
+
+    let header = str.concat(["<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"",
+      str.from_int(svg_w), "\" height=\"", str.from_int(svg_h), "\">\n",
+      "  <rect width=\"100%\" height=\"100%\" fill=\"#f9f9f9\"/>\n",
+      "  <text x=\"20\" y=\"30\" font-family=\"sans-serif\" font-size=\"16\" font-weight=\"bold\" fill=\"#222\">",
+      jc.rgb_to_hex(rgb), " — ", name, "</text>\n"]) in
+
+    let row1_y = 50 in
+    let r1 = str.concat([
+      section_label(20, row1_y, "Base"),
+      swatch(20, row1_y + 8, cw, ch, rgb, name),
+      section_label(120, row1_y, "Complement"),
+      swatch(120, row1_y + 8, cw, ch, comp, cn.nearest_name(comp))
+    ]) in
+
+    let row2_y = row1_y + ch + 45 in
+    let r2 = str.concat([
+      section_label(20, row2_y, "Analogous"),
+      swatch(20,        row2_y + 8, cw, ch, list.get(analog, 0), cn.nearest_name(list.get(analog, 0))),
+      swatch(20 + col,  row2_y + 8, cw, ch, list.get(analog, 1), cn.nearest_name(list.get(analog, 1))),
+      swatch(20 + col * 2, row2_y + 8, cw, ch, list.get(analog, 2), cn.nearest_name(list.get(analog, 2)))
+    ]) in
+
+    let row3_y = row2_y + ch + 45 in
+    let r3 = str.concat([
+      section_label(20, row3_y, "Triadic"),
+      swatch(20,        row3_y + 8, cw, ch, list.get(triad, 0), cn.nearest_name(list.get(triad, 0))),
+      swatch(20 + col,  row3_y + 8, cw, ch, list.get(triad, 1), cn.nearest_name(list.get(triad, 1))),
+      swatch(20 + col * 2, row3_y + 8, cw, ch, list.get(triad, 2), cn.nearest_name(list.get(triad, 2))),
+      section_label(280, row3_y, "Split Complement"),
+      swatch(280,        row3_y + 8, cw, ch, list.get(split, 0), cn.nearest_name(list.get(split, 0))),
+      swatch(280 + col,  row3_y + 8, cw, ch, list.get(split, 1), cn.nearest_name(list.get(split, 1))),
+      swatch(280 + col * 2, row3_y + 8, cw, ch, list.get(split, 2), cn.nearest_name(list.get(split, 2)))
+    ]) in
+
+    let row4_y = row3_y + ch + 45 in
+    let r4 = str.concat([
+      section_label(20, row4_y, "Shades"),
+      str.join(list.build(6, fn(i) {
+        swatch(20 + col * i, row4_y + 8, cw, ch, list.get(shades5, i), "")
+      }), "")
+    ]) in
+
+    let row5_y = row4_y + ch + 45 in
+    let r5 = str.concat([
+      section_label(20, row5_y, "Tints"),
+      str.join(list.build(6, fn(i) {
+        swatch(20 + col * i, row5_y + 8, cw, ch, list.get(tints5, i), "")
+      }), "")
+    ]) in
+
+    let row6_y = row5_y + ch + 45 in
+    let r6 = str.concat([
+      section_label(20, row6_y, "Tones"),
+      str.join(list.build(6, fn(i) {
+        swatch(20 + col * i, row6_y + 8, cw, ch, list.get(tones5, i), "")
+      }), "")
+    ]) in
+
+    let svg = str.concat([header, r1, r2, r3, r4, r5, r6, "</svg>\n"]) in
+    let out = str.concat(["out/relations_", str.slice(jc.rgb_to_hex(rgb), 1, 7), ".svg"]) in
+    let _ = fs.write_text(out, svg) in
+    io.println(str.concat(["wrote ", out]))
+}
+
+main()
