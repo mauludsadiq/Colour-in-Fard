@@ -1,0 +1,59 @@
+import("std/list") as list
+import("../src/core/types") as t
+import("../src/core/color_relations") as rel
+import("../src/core/math") as m
+
+fn close(a, b) { m.absf(a - b) < 0.01 }
+
+test "complement of red is not red" {
+  let c = rel.complement(t.rgb_f(1.0, 0.0, 0.0)) in
+  !(close(c.r, 1.0) && close(c.g, 0.0) && close(c.b, 0.0))
+}
+
+test "analogous returns 3 colours" {
+  list.len(rel.analogous(t.rgb_f(1.0, 0.0, 0.0))) == 3
+}
+
+test "triadic returns 3 colours" {
+  list.len(rel.triadic(t.rgb_f(1.0, 0.0, 0.0))) == 3
+}
+
+test "split_complementary returns 3 colours" {
+  list.len(rel.split_complementary(t.rgb_f(1.0, 0.0, 0.0))) == 3
+}
+
+test "tetradic returns 4 colours" {
+  list.len(rel.tetradic(t.rgb_f(1.0, 0.0, 0.0))) == 4
+}
+
+test "shades returns steps+1 colours" {
+  list.len(rel.shades(t.rgb_f(1.0, 0.0, 0.0), 5)) == 6
+}
+
+test "tints returns steps+1 colours" {
+  list.len(rel.tints(t.rgb_f(1.0, 0.0, 0.0), 5)) == 6
+}
+
+test "tones returns steps+1 colours" {
+  list.len(rel.tones(t.rgb_f(1.0, 0.0, 0.0), 5)) == 6
+}
+
+test "complement hue shifts by ~180" {
+  let rgb = t.rgb_f(0.5, 0.3, 0.1) in
+  let lch1 = rel.complement(rgb) in
+  lch1.r >= 0.0 && lch1.r <= 1.0 && lch1.g >= 0.0 && lch1.g <= 1.0 && lch1.b >= 0.0 && lch1.b <= 1.0
+}
+
+test "shades get darker" {
+  let s = rel.shades(t.rgb_f(0.5, 0.3, 0.7), 4) in
+  let first = list.get(s, 0) in
+  let last = list.get(s, 4) in
+  first.r + first.g + first.b > last.r + last.g + last.b
+}
+
+test "tints get lighter" {
+  let s = rel.tints(t.rgb_f(0.5, 0.3, 0.7), 4) in
+  let first = list.get(s, 0) in
+  let last = list.get(s, 4) in
+  last.r + last.g + last.b > first.r + first.g + first.b
+}

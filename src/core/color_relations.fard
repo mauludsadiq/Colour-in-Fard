@@ -1,0 +1,83 @@
+import("std/list") as list
+import("std/cast") as cast
+import("../core/types") as t
+import("../core/rgb_lab") as lab
+import("../core/math") as m
+
+fn complement(rgb) {
+  let lch = lab.rgb_to_lch(rgb) in
+  lab.lch_to_rgb(t.lch(lch.l, lch.c, m.mod360(lch.h + 180.0)))
+}
+
+fn analogous(rgb) {
+  let lch = lab.rgb_to_lch(rgb) in
+  [
+    lab.lch_to_rgb(t.lch(lch.l, lch.c, m.mod360(lch.h - 30.0))),
+    rgb,
+    lab.lch_to_rgb(t.lch(lch.l, lch.c, m.mod360(lch.h + 30.0)))
+  ]
+}
+
+fn triadic(rgb) {
+  let lch = lab.rgb_to_lch(rgb) in
+  [
+    rgb,
+    lab.lch_to_rgb(t.lch(lch.l, lch.c, m.mod360(lch.h + 120.0))),
+    lab.lch_to_rgb(t.lch(lch.l, lch.c, m.mod360(lch.h + 240.0)))
+  ]
+}
+
+fn split_complementary(rgb) {
+  let lch = lab.rgb_to_lch(rgb) in
+  [
+    rgb,
+    lab.lch_to_rgb(t.lch(lch.l, lch.c, m.mod360(lch.h + 150.0))),
+    lab.lch_to_rgb(t.lch(lch.l, lch.c, m.mod360(lch.h + 210.0)))
+  ]
+}
+
+fn tetradic(rgb) {
+  let lch = lab.rgb_to_lch(rgb) in
+  [
+    rgb,
+    lab.lch_to_rgb(t.lch(lch.l, lch.c, m.mod360(lch.h + 90.0))),
+    lab.lch_to_rgb(t.lch(lch.l, lch.c, m.mod360(lch.h + 180.0))),
+    lab.lch_to_rgb(t.lch(lch.l, lch.c, m.mod360(lch.h + 270.0)))
+  ]
+}
+
+fn shades(rgb, steps) {
+  let lch = lab.rgb_to_lch(rgb) in
+  let step = lch.l / cast.float(steps) in
+  list.build(steps + 1, fn(i) {
+    lab.lch_to_rgb(t.lch(lch.l - cast.float(i) * step, lch.c, lch.h))
+  })
+}
+
+fn tints(rgb, steps) {
+  let lch = lab.rgb_to_lch(rgb) in
+  let range = 100.0 - lch.l in
+  let step = range / cast.float(steps) in
+  list.build(steps + 1, fn(i) {
+    lab.lch_to_rgb(t.lch(lch.l + cast.float(i) * step, lch.c, lch.h))
+  })
+}
+
+fn tones(rgb, steps) {
+  let lch = lab.rgb_to_lch(rgb) in
+  let step = lch.c / cast.float(steps) in
+  list.build(steps + 1, fn(i) {
+    lab.lch_to_rgb(t.lch(lch.l, lch.c - cast.float(i) * step, lch.h))
+  })
+}
+
+{
+  complement: complement,
+  analogous: analogous,
+  triadic: triadic,
+  split_complementary: split_complementary,
+  tetradic: tetradic,
+  shades: shades,
+  tints: tints,
+  tones: tones
+}
