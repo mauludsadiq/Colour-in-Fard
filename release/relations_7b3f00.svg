@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="620">
+  <rect width="100%" height="100%" fill="#f9f9f9"/>
+  <text x="20" y="30" font-family="sans-serif" font-size="16" font-weight="bold" fill="#222">#7b3f00 — sienna</text>
+  <text x="20" y="50" font-family="sans-serif" font-size="11" font-weight="bold" fill="#444">Base</text>
+  <rect x="20" y="58" width="60" height="50" fill="#7b3f00" stroke="#cccccc" stroke-width="1"/>
+  <text x="50" y="122" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#7b3f00</text>
+  <text x="50" y="134" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666">sienna</text>
+  <text x="120" y="50" font-family="sans-serif" font-size="11" font-weight="bold" fill="#444">Complement</text>
+  <rect x="120" y="58" width="60" height="50" fill="#005c94" stroke="#cccccc" stroke-width="1"/>
+  <text x="150" y="122" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#005c94</text>
+  <text x="150" y="134" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666">steel blue</text>
+  <text x="20" y="145" font-family="sans-serif" font-size="11" font-weight="bold" fill="#444">Analogous</text>
+  <rect x="20" y="153" width="60" height="50" fill="#8f2c27" stroke="#cccccc" stroke-width="1"/>
+  <text x="50" y="217" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#8f2c27</text>
+  <text x="50" y="229" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666">brown</text>
+  <rect x="90" y="153" width="60" height="50" fill="#7b3f00" stroke="#cccccc" stroke-width="1"/>
+  <text x="120" y="217" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#7b3f00</text>
+  <text x="120" y="229" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666">sienna</text>
+  <rect x="160" y="153" width="60" height="50" fill="#5c4e00" stroke="#cccccc" stroke-width="1"/>
+  <text x="190" y="217" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#5c4e00</text>
+  <text x="190" y="229" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666">olive</text>
+  <text x="20" y="240" font-family="sans-serif" font-size="11" font-weight="bold" fill="#444">Triadic</text>
+  <rect x="20" y="248" width="60" height="50" fill="#7b3f00" stroke="#cccccc" stroke-width="1"/>
+  <text x="50" y="312" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#7b3f00</text>
+  <text x="50" y="324" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666">sienna</text>
+  <rect x="90" y="248" width="60" height="50" fill="#006052" stroke="#cccccc" stroke-width="1"/>
+  <text x="120" y="312" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#006052</text>
+  <text x="120" y="324" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666">hunter green</text>
+  <rect x="160" y="248" width="60" height="50" fill="#524291" stroke="#cccccc" stroke-width="1"/>
+  <text x="190" y="312" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#524291</text>
+  <text x="190" y="324" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666">cobalt</text>
+  <text x="280" y="240" font-family="sans-serif" font-size="11" font-weight="bold" fill="#444">Split Complement</text>
+  <rect x="280" y="248" width="60" height="50" fill="#7b3f00" stroke="#cccccc" stroke-width="1"/>
+  <text x="310" y="312" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#7b3f00</text>
+  <text x="310" y="324" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666">sienna</text>
+  <rect x="350" y="248" width="60" height="50" fill="#006078" stroke="#cccccc" stroke-width="1"/>
+  <text x="380" y="312" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#006078</text>
+  <text x="380" y="324" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666">cerulean</text>
+  <rect x="420" y="248" width="60" height="50" fill="#00529d" stroke="#cccccc" stroke-width="1"/>
+  <text x="450" y="312" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#00529d</text>
+  <text x="450" y="324" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666">cobalt</text>
+  <text x="20" y="335" font-family="sans-serif" font-size="11" font-weight="bold" fill="#444">Shades</text>
+  <rect x="20" y="343" width="60" height="50" fill="#7b3f00" stroke="#cccccc" stroke-width="1"/>
+  <text x="50" y="407" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#7b3f00</text>
+  <text x="50" y="419" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666"></text>
+  <rect x="90" y="343" width="60" height="50" fill="#683000" stroke="#cccccc" stroke-width="1"/>
+  <text x="120" y="407" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#683000</text>
+  <text x="120" y="419" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666"></text>
+  <rect x="160" y="343" width="60" height="50" fill="#572000" stroke="#cccccc" stroke-width="1"/>
+  <text x="190" y="407" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#572000</text>
+  <text x="190" y="419" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666"></text>
+  <rect x="230" y="343" width="60" height="50" fill="#471100" stroke="#cccccc" stroke-width="1"/>
+  <text x="260" y="407" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#471100</text>
+  <text x="260" y="419" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666"></text>
+  <rect x="300" y="343" width="60" height="50" fill="#3a0100" stroke="#cccccc" stroke-width="1"/>
+  <text x="330" y="407" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#3a0100</text>
+  <text x="330" y="419" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666"></text>
+  <rect x="370" y="343" width="60" height="50" fill="#330000" stroke="#cccccc" stroke-width="1"/>
+  <text x="400" y="407" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#330000</text>
+  <text x="400" y="419" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666"></text>
+  <text x="20" y="430" font-family="sans-serif" font-size="11" font-weight="bold" fill="#444">Tints</text>
+  <rect x="20" y="438" width="60" height="50" fill="#7b3f00" stroke="#cccccc" stroke-width="1"/>
+  <text x="50" y="502" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#7b3f00</text>
+  <text x="50" y="514" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666"></text>
+  <rect x="90" y="438" width="60" height="50" fill="#a15f23" stroke="#cccccc" stroke-width="1"/>
+  <text x="120" y="502" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#a15f23</text>
+  <text x="120" y="514" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666"></text>
+  <rect x="160" y="438" width="60" height="50" fill="#c88043" stroke="#cccccc" stroke-width="1"/>
+  <text x="190" y="502" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#c88043</text>
+  <text x="190" y="514" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666"></text>
+  <rect x="230" y="438" width="60" height="50" fill="#f0a364" stroke="#cccccc" stroke-width="1"/>
+  <text x="260" y="502" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#f0a364</text>
+  <text x="260" y="514" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666"></text>
+  <rect x="300" y="438" width="60" height="50" fill="#ffc887" stroke="#cccccc" stroke-width="1"/>
+  <text x="330" y="502" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#ffc887</text>
+  <text x="330" y="514" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666"></text>
+  <rect x="370" y="438" width="60" height="50" fill="#ffedab" stroke="#cccccc" stroke-width="1"/>
+  <text x="400" y="502" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#ffedab</text>
+  <text x="400" y="514" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666"></text>
+  <text x="20" y="525" font-family="sans-serif" font-size="11" font-weight="bold" fill="#444">Tones</text>
+  <rect x="20" y="533" width="60" height="50" fill="#7b3f00" stroke="#cccccc" stroke-width="1"/>
+  <text x="50" y="597" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#7b3f00</text>
+  <text x="50" y="609" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666"></text>
+  <rect x="90" y="533" width="60" height="50" fill="#754315" stroke="#cccccc" stroke-width="1"/>
+  <text x="120" y="597" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#754315</text>
+  <text x="120" y="609" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666"></text>
+  <rect x="160" y="533" width="60" height="50" fill="#6d4625" stroke="#cccccc" stroke-width="1"/>
+  <text x="190" y="597" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#6d4625</text>
+  <text x="190" y="609" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666"></text>
+  <rect x="230" y="533" width="60" height="50" fill="#654933" stroke="#cccccc" stroke-width="1"/>
+  <text x="260" y="597" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#654933</text>
+  <text x="260" y="609" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666"></text>
+  <rect x="300" y="533" width="60" height="50" fill="#5b4c41" stroke="#cccccc" stroke-width="1"/>
+  <text x="330" y="597" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#5b4c41</text>
+  <text x="330" y="609" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666"></text>
+  <rect x="370" y="533" width="60" height="50" fill="#4f4f4f" stroke="#cccccc" stroke-width="1"/>
+  <text x="400" y="597" text-anchor="middle" font-family="monospace" font-size="10" fill="#333">#4f4f4f</text>
+  <text x="400" y="609" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#666"></text>
+</svg>

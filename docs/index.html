@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Colour in FARD — v1.0.0</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0f0f0f; color: #e8e8e8; line-height: 1.6; }
+    header { padding: 60px 40px 40px; border-bottom: 1px solid #222; }
+    header h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.5px; color: #fff; }
+    header p { margin-top: 12px; font-size: 1rem; color: #888; max-width: 640px; }
+    header .tag { display: inline-block; margin-top: 16px; padding: 4px 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; font-family: monospace; font-size: 0.8rem; color: #aaa; }
+    section { padding: 48px 40px; border-bottom: 1px solid #1a1a1a; }
+    section h2 { font-size: 1.1rem; font-weight: 600; color: #ccc; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 24px; }
+    .explain-block { background: #141414; border: 1px solid #222; border-radius: 8px; padding: 28px 32px; font-family: monospace; font-size: 0.85rem; line-height: 1.8; color: #bbb; max-width: 720px; }
+    .explain-block .hex { color: #fff; font-size: 1.1rem; font-weight: bold; }
+    .explain-block .label { color: #666; }
+    .explain-block .value { color: #e8e8e8; }
+    .explain-block .section-head { color: #555; margin-top: 16px; }
+    .explain-block .rel { color: #7eb8f7; }
+    .explain-block .swatch-row { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+    .swatch { width: 36px; height: 36px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.08); }
+    .svg-frame { background: #fff; border-radius: 8px; padding: 12px; display: inline-block; margin-top: 8px; }
+    .svg-frame img { display: block; max-width: 100%; }
+    .receipt-block { background: #141414; border: 1px solid #222; border-radius: 8px; padding: 24px 28px; font-family: monospace; font-size: 0.8rem; line-height: 1.9; color: #888; max-width: 640px; }
+    .receipt-block .digest { color: #7eb8f7; word-break: break-all; }
+    .receipt-block .key { color: #555; }
+    .bench-table { border-collapse: collapse; margin-top: 8px; }
+    .bench-table th { text-align: left; color: #555; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; padding: 8px 24px 8px 0; border-bottom: 1px solid #222; }
+    .bench-table td { padding: 10px 24px 10px 0; font-family: monospace; font-size: 0.85rem; color: #bbb; border-bottom: 1px solid #1a1a1a; }
+    .bench-table td:last-child { color: #7eb8f7; }
+    footer { padding: 40px; color: #444; font-size: 0.8rem; }
+    footer a { color: #666; text-decoration: none; }
+    footer a:hover { color: #aaa; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Colour in FARD</h1>
+  <p>A deterministic perceptual colour engine. Full 24-bit RGB universe. LAB naming.
+     LCH relationships. Multi-format exports. Cryptographic receipts.</p>
+  <span class="tag">v1.0.0</span>
+  <span class="tag" style="margin-left:8px">pure FARD — no FFI — no native deps</span>
+</header>
+
+<section>
+  <h2>colorbrain explain #7B3F00</h2>
+  <div class="explain-block">
+    <div><span class="label">input:        </span><span class="hex">#7b3f00</span></div>
+    <div><span class="label">nearest_name: </span><span class="value">sienna</span></div>
+    <div><span class="label">family:       </span><span class="value">yellow</span></div>
+    <div><span class="label">character:    </span><span class="value">dark, medium chroma</span></div>
+    <br>
+    <div><span class="label">lch:  </span><span class="value">L=33.4  C=49.1  H=63</span></div>
+    <div><span class="label">lab:  </span><span class="value">L=33.4  a=22.2  b=43.7</span></div>
+    <div><span class="label">hsv:  </span><span class="value">H=30.7  S=1  V=0.4</span></div>
+    <div><span class="label">rgb:  </span><span class="value">123 63 0</span></div>
+    <br>
+    <div class="section-head">relations:</div>
+    <div><span class="label">  complement    : </span><span class="rel">#005c94</span><span class="label"> (steel blue)</span></div>
+    <div><span class="label">  analogous [-] : </span><span class="rel">#8f2c27</span><span class="label"> (brown)</span></div>
+    <div><span class="label">  analogous [+] : </span><span class="rel">#5c4e00</span><span class="label"> (olive)</span></div>
+    <div><span class="label">  triadic   [1] : </span><span class="rel">#006052</span><span class="label"> (hunter green)</span></div>
+    <div><span class="label">  triadic   [2] : </span><span class="rel">#524291</span><span class="label"> (cobalt)</span></div>
+    <div><span class="label">  split     [1] : </span><span class="rel">#006078</span><span class="label"> (cerulean)</span></div>
+    <div><span class="label">  split     [2] : </span><span class="rel">#00529d</span><span class="label"> (cobalt)</span></div>
+    <br>
+    <div class="section-head">shades:</div>
+    <div class="swatch-row">
+      <div class="swatch" style="background:#7b3f00" title="#7b3f00"></div>
+      <div class="swatch" style="background:#642c00" title="#642c00"></div>
+      <div class="swatch" style="background:#4f1900" title="#4f1900"></div>
+      <div class="swatch" style="background:#3d0400" title="#3d0400"></div>
+      <div class="swatch" style="background:#330000" title="#330000"></div>
+    </div>
+    <br>
+    <div class="section-head">tints:</div>
+    <div class="swatch-row">
+      <div class="swatch" style="background:#7b3f00" title="#7b3f00"></div>
+      <div class="swatch" style="background:#ab672b" title="#ab672b"></div>
+      <div class="swatch" style="background:#dc9254" title="#dc9254"></div>
+      <div class="swatch" style="background:#ffbe7e" title="#ffbe7e"></div>
+      <div class="swatch" style="background:#ffedab" title="#ffedab"></div>
+    </div>
+    <br>
+    <div class="section-head">tones:</div>
+    <div class="swatch-row">
+      <div class="swatch" style="background:#7b3f00" title="#7b3f00"></div>
+      <div class="swatch" style="background:#73431a" title="#73431a"></div>
+      <div class="swatch" style="background:#69472c" title="#69472c"></div>
+      <div class="swatch" style="background:#5e4b3e" title="#5e4b3e"></div>
+      <div class="swatch" style="background:#4f4f4f" title="#4f4f4f"></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Relationship Sheet — #7B3F00</h2>
+  <div class="svg-frame">
+    <img src="relations_7b3f00.svg" alt="Colour relationship sheet for #7B3F00" width="500">
+  </div>
+</section>
+
+<section>
+  <h2>Palette — K=10 (1,331 colours)</h2>
+  <div class="svg-frame">
+    <img src="palette_K10.svg" alt="Full palette grid K=10">
+  </div>
+</section>
+
+<section>
+  <h2>Receipt Verification</h2>
+  <p style="color:#666; font-size:0.85rem; margin-bottom:16px;">
+    Every output is cryptographically receipted. Same inputs always produce the same digests.
+  </p>
+  <div class="receipt-block">
+    <div><span class="key">kind:           </span>colorbrain_explain</div>
+    <div><span class="key">naming_version: </span>1.0.0</div>
+    <div><span class="key">lab_version:    </span>1.0.0</div>
+    <div><span class="key">input_digest:   </span><span class="digest">sha256:8cadc094...3644542</span></div>
+    <div><span class="key">params_digest:  </span><span class="digest">sha256:372192a7...833f59</span></div>
+    <div><span class="key">output_digest:  </span><span class="digest">sha256:c5817fe2...561344</span></div>
+  </div>
+</section>
+
+<section>
+  <h2>Benchmarks</h2>
+  <table class="bench-table">
+    <tr><th>Operation</th><th>Scale</th><th>Time</th></tr>
+    <tr><td>Full RGB traversal</td><td>16,777,216 colours</td><td>41m49s</td></tr>
+    <tr><td>PPM export (K=255)</td><td>171MB streamed</td><td>41m49s</td></tr>
+    <tr><td>Catalogue generation</td><td>K=10, 1,331 colours</td><td>1m6s</td></tr>
+    <tr><td>Relationship sheet</td><td>1 hex, SVG out</td><td>&lt;1s</td></tr>
+    <tr><td>colorbrain explain</td><td>1 hex, full profile</td><td>&lt;1s</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Why This Matters</h2>
+  <p style="max-width:640px; color:#888; font-size:0.9rem; line-height:1.8;">
+    Colour-in-Fard is a deterministic perceptual colour engine where every colour
+    result is reproducible, named, related, exported, and cryptographically receipted.
+    <br><br>
+    It does not approximate. It does not depend on native libraries, system colour
+    profiles, or floating-point non-determinism from external code. Every output
+    is derived from first principles: sRGB gamma, D65 illuminant, CIELAB cube root,
+    LCH cylindrical projection. The math is in the repo. The receipts prove it ran.
+    <br><br>
+    At K=255 it covers the entire 24-bit RGB space — 16,777,216 colours — the full
+    universe of colour a standard display can show. Each one is named, related,
+    and exportable. That is what exceeding Pantone looks like from first principles.
+  </p>
+</section>
+
+<footer>
+  <p>
+    <a href="https://github.com/mauludsadiq/Colour-in-Fard">github.com/mauludsadiq/Colour-in-Fard</a>
+    &nbsp;&mdash;&nbsp; v1.0.0 &nbsp;&mdash;&nbsp; built with
+    <a href="https://github.com/mauludsadiq/FARD">FARD v1.7.1</a>
+  </p>
+</footer>
+
+</body>
+</html>
