@@ -1,422 +1,296 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
- <meta charset="UTF-8">
- <meta name="viewport" content="width=device-width, initial-scale=1.0">
- <title>CF Colour Registry — Viewer</title>
- <style>
-   * { box-sizing: border-box; margin: 0; padding: 0; }
-
-   body {
-     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-     background: #0f0f0f;
-     color: #e8e8e8;
-     min-height: 100vh;
-   }
-
-   header {
-     padding: 32px 40px 24px;
-     border-bottom: 1px solid #1e1e1e;
-     display: flex;
-     align-items: center;
-     gap: 24px;
-     flex-wrap: wrap;
-   }
-
-   header h1 {
-     font-size: 1.1rem;
-     font-weight: 600;
-     color: #fff;
-     letter-spacing: -0.3px;
-   }
-
-   header span {
-     font-size: 0.75rem;
-     color: #555;
-     font-family: monospace;
-   }
-
-   .search-bar {
-     display: flex;
-     gap: 10px;
-     padding: 24px 40px;
-     border-bottom: 1px solid #1a1a1a;
-     align-items: center;
-     flex-wrap: wrap;
-   }
-
-   .search-bar input {
-     background: #1a1a1a;
-     border: 1px solid #2a2a2a;
-     color: #e8e8e8;
-     padding: 10px 16px;
-     border-radius: 6px;
-     font-size: 0.95rem;
-     font-family: monospace;
-     width: 180px;
-     outline: none;
-   }
-
-   .search-bar input:focus {
-     border-color: #444;
-   }
-
-   .search-bar button {
-     background: #e8e8e8;
-     color: #0f0f0f;
-     border: none;
-     padding: 10px 20px;
-     border-radius: 6px;
-     font-size: 0.9rem;
-     font-weight: 600;
-     cursor: pointer;
-   }
-
-   .search-bar button:hover { background: #fff; }
-
-   .error { color: #ff6b6b; font-size: 0.85rem; font-family: monospace; }
-
-   #main { padding: 32px 40px; display: none; }
-
-   .colour-hero {
-     display: flex;
-     gap: 32px;
-     align-items: flex-start;
-     flex-wrap: wrap;
-     margin-bottom: 40px;
-   }
-
-   .swatch-large {
-     width: 140px;
-     height: 140px;
-     border-radius: 12px;
-     border: 1px solid rgba(255,255,255,0.08);
-     flex-shrink: 0;
-   }
-
-   .colour-meta h2 {
-     font-size: 1.8rem;
-     font-weight: 700;
-     color: #fff;
-     margin-bottom: 6px;
-   }
-
-   .colour-meta .cf-id {
-     font-family: monospace;
-     font-size: 0.85rem;
-     color: #7eb8f7;
-     margin-bottom: 12px;
-   }
-
-   .colour-meta .cf-id a {
-     color: #7eb8f7;
-     text-decoration: none;
-   }
-
-   .colour-meta .cf-id a:hover { text-decoration: underline; }
-
-   .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
-
-   .badge {
-     padding: 3px 10px;
-     border-radius: 20px;
-     font-size: 0.75rem;
-     font-weight: 500;
-     border: 1px solid #333;
-     color: #aaa;
-   }
-
-   .data-grid {
-     display: grid;
-     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-     gap: 16px;
-     margin-bottom: 40px;
-   }
-
-   .data-card {
-     background: #141414;
-     border: 1px solid #1e1e1e;
-     border-radius: 8px;
-     padding: 20px;
-   }
-
-   .data-card h3 {
-     font-size: 0.7rem;
-     text-transform: uppercase;
-     letter-spacing: 1px;
-     color: #555;
-     margin-bottom: 12px;
-   }
-
-   .data-row {
-     display: flex;
-     justify-content: space-between;
-     padding: 5px 0;
-     border-bottom: 1px solid #1a1a1a;
-     font-size: 0.85rem;
-   }
-
-   .data-row:last-child { border-bottom: none; }
-   .data-row .label { color: #666; }
-   .data-row .value { color: #e8e8e8; font-family: monospace; }
-
-   .section-title {
-     font-size: 0.75rem;
-     text-transform: uppercase;
-     letter-spacing: 1px;
-     color: #555;
-     margin-bottom: 16px;
-   }
-
-   .swatch-row {
-     display: flex;
-     gap: 6px;
-     flex-wrap: wrap;
-     margin-bottom: 32px;
-   }
-
-   .swatch-item { text-align: center; }
-
-   .swatch-small {
-     width: 48px;
-     height: 48px;
-     border-radius: 6px;
-     border: 1px solid rgba(255,255,255,0.06);
-     cursor: pointer;
-     transition: transform 0.1s;
-   }
-
-   .swatch-small:hover { transform: scale(1.1); }
-
-   .swatch-label {
-     font-size: 0.6rem;
-     color: #555;
-     font-family: monospace;
-     margin-top: 4px;
-   }
-
-   .url-block {
-     background: #141414;
-     border: 1px solid #1e1e1e;
-     border-radius: 8px;
-     padding: 16px 20px;
-     font-family: monospace;
-     font-size: 0.78rem;
-     color: #7eb8f7;
-     word-break: break-all;
-     margin-bottom: 32px;
-   }
-
-   .url-block .url-label { color: #555; font-size: 0.7rem; margin-bottom: 6px; }
-
-   .receipt-block {
-     background: #141414;
-     border: 1px solid #1e1e1e;
-     border-radius: 8px;
-     padding: 16px 20px;
-     font-family: monospace;
-     font-size: 0.75rem;
-     line-height: 1.8;
-     color: #888;
-     margin-bottom: 32px;
-   }
-
-   .receipt-block .digest { color: #7eb8f7; word-break: break-all; }
-
-   footer {
-     padding: 32px 40px;
-     border-top: 1px solid #1a1a1a;
-     color: #444;
-     font-size: 0.75rem;
-   }
-
-   footer a { color: #555; text-decoration: none; }
-   footer a:hover { color: #aaa; }
-
-   .loading { color: #555; font-size: 0.85rem; padding: 24px 40px; }
- </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CF Colour Registry — Viewer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0f0f0f; color: #e8e8e8; min-height: 100vh; }
+    header { padding: 32px 40px 24px; border-bottom: 1px solid #1e1e1e; display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+    header h1 { font-size: 1.1rem; font-weight: 600; color: #fff; letter-spacing: -0.3px; }
+    header span { font-size: 0.75rem; color: #555; font-family: monospace; }
+    .search-bar { display: flex; gap: 10px; padding: 24px 40px; border-bottom: 1px solid #1a1a1a; align-items: center; flex-wrap: wrap; }
+    .search-bar input { background: #1a1a1a; border: 1px solid #2a2a2a; color: #e8e8e8; padding: 10px 16px; border-radius: 6px; font-size: 0.95rem; font-family: monospace; width: 180px; outline: none; }
+    .search-bar input:focus { border-color: #444; }
+    .search-bar button { background: #e8e8e8; color: #0f0f0f; border: none; padding: 10px 20px; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+    .search-bar button:hover { background: #fff; }
+    .search-bar button.secondary { background: #1a1a1a; color: #aaa; border: 1px solid #2a2a2a; }
+    .search-bar button.secondary:hover { background: #222; color: #e8e8e8; }
+    .error { color: #ff6b6b; font-size: 0.85rem; font-family: monospace; }
+    #main { padding: 32px 40px; display: none; }
+    .colour-hero { display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 40px; }
+    .swatch-large { width: 140px; height: 140px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); flex-shrink: 0; }
+    .colour-meta h2 { font-size: 1.8rem; font-weight: 700; color: #fff; margin-bottom: 6px; }
+    .colour-meta .cf-id { font-family: monospace; font-size: 0.85rem; color: #7eb8f7; margin-bottom: 12px; }
+    .colour-meta .cf-id a { color: #7eb8f7; text-decoration: none; }
+    .colour-meta .cf-id a:hover { text-decoration: underline; }
+    .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .badge { padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 500; border: 1px solid #333; color: #aaa; }
+    .data-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 40px; }
+    .data-card { background: #141414; border: 1px solid #1e1e1e; border-radius: 8px; padding: 20px; }
+    .data-card h3 { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #555; margin-bottom: 12px; }
+    .data-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #1a1a1a; font-size: 0.85rem; }
+    .data-row:last-child { border-bottom: none; }
+    .data-row .label { color: #666; }
+    .data-row .value { color: #e8e8e8; font-family: monospace; }
+    .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #555; margin-bottom: 16px; }
+    .url-block { background: #141414; border: 1px solid #1e1e1e; border-radius: 8px; padding: 16px 20px; font-family: monospace; font-size: 0.78rem; color: #7eb8f7; word-break: break-all; margin-bottom: 32px; }
+    .url-block .url-label { color: #555; font-size: 0.7rem; margin-bottom: 6px; }
+    #not-in-registry { display:none; color:#666; font-size:0.85rem; margin-bottom:32px; }
+    .search-results { margin-bottom: 32px; }
+    .search-result-item { display: flex; align-items: center; gap: 16px; padding: 10px 0; border-bottom: 1px solid #1a1a1a; cursor: pointer; }
+    .search-result-item:hover { background: #141414; padding-left: 8px; border-radius: 4px; }
+    .result-swatch { width: 32px; height: 32px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.06); flex-shrink: 0; }
+    .result-info { flex: 1; }
+    .result-name { font-size: 0.9rem; color: #e8e8e8; }
+    .result-hex { font-size: 0.75rem; color: #666; font-family: monospace; }
+    .result-cfid { font-size: 0.7rem; color: #7eb8f7; font-family: monospace; }
+    footer { padding: 32px 40px; border-top: 1px solid #1a1a1a; color: #444; font-size: 0.75rem; }
+    footer a { color: #555; text-decoration: none; }
+    footer a:hover { color: #aaa; }
+    .loading { color: #555; font-size: 0.85rem; padding: 24px 40px; }
+  </style>
 </head>
 <body>
 
 <header>
- <h1>CF Colour Registry</h1>
- <span>v1.0.0 &mdash; 9,261 public colour identities</span>
+  <h1>CF Colour Registry</h1>
+  <span>v1.0.0 &mdash; 9,261 public colour identities</span>
 </header>
 
 <div class="search-bar">
- <input type="text" id="hex-input" placeholder="#cc0000" maxlength="7" />
- <button onclick="lookup()">Lookup</button>
- <span class="error" id="error-msg"></span>
+  <input type="text" id="hex-input" placeholder="#cc0000 or 'scarlet'" maxlength="40" />
+  <button onclick="handleSearch()">Lookup</button>
+  <button class="secondary" onclick="random()">Random</button>
+  <span class="error" id="error-msg"></span>
 </div>
 
 <div class="loading" id="loading" style="display:none">resolving...</div>
 
+<div id="search-results-container" style="padding:0 40px; display:none">
+  <div class="section-title" style="padding-top:24px">Name search results</div>
+  <div class="search-results" id="search-results"></div>
+</div>
+
 <div id="main">
- <div class="colour-hero">
-   <div class="swatch-large" id="hero-swatch"></div>
-   <div class="colour-meta">
-     <h2 id="hero-name"></h2>
-     <div class="cf-id" id="hero-cfid"></div>
-     <div class="badges" id="hero-badges"></div>
-   </div>
- </div>
+  <div class="colour-hero">
+    <div class="swatch-large" id="hero-swatch"></div>
+    <div class="colour-meta">
+      <h2 id="hero-name"></h2>
+      <div class="cf-id" id="hero-cfid"></div>
+      <div class="badges" id="hero-badges"></div>
+    </div>
+  </div>
 
- <div class="data-grid">
-   <div class="data-card">
-     <h3>Identity</h3>
-     <div class="data-row"><span class="label">hex</span><span class="value" id="d-hex"></span></div>
-     <div class="data-row"><span class="label">rgb</span><span class="value" id="d-rgb"></span></div>
-     <div class="data-row"><span class="label">cf_id</span><span class="value" id="d-cfid"></span></div>
-   </div>
-   <div class="data-card">
-     <h3>LCH</h3>
-     <div class="data-row"><span class="label">L (lightness)</span><span class="value" id="d-lch-l"></span></div>
-     <div class="data-row"><span class="label">C (chroma)</span><span class="value" id="d-lch-c"></span></div>
-     <div class="data-row"><span class="label">H (hue)</span><span class="value" id="d-lch-h"></span></div>
-   </div>
-   <div class="data-card">
-     <h3>LAB</h3>
-     <div class="data-row"><span class="label">L</span><span class="value" id="d-lab-l"></span></div>
-     <div class="data-row"><span class="label">a</span><span class="value" id="d-lab-a"></span></div>
-     <div class="data-row"><span class="label">b</span><span class="value" id="d-lab-b"></span></div>
-   </div>
-   <div class="data-card">
-     <h3>Versions</h3>
-     <div class="data-row"><span class="label">identity</span><span class="value" id="d-idv"></span></div>
-     <div class="data-row"><span class="label">naming</span><span class="value" id="d-namv"></span></div>
-     <div class="data-row"><span class="label">lab</span><span class="value" id="d-labv"></span></div>
-   </div>
- </div>
+  <div class="data-grid">
+    <div class="data-card">
+      <h3>Identity</h3>
+      <div class="data-row"><span class="label">hex</span><span class="value" id="d-hex"></span></div>
+      <div class="data-row"><span class="label">rgb</span><span class="value" id="d-rgb"></span></div>
+      <div class="data-row"><span class="label">cf_id</span><span class="value" id="d-cfid"></span></div>
+    </div>
+    <div class="data-card">
+      <h3>LCH</h3>
+      <div class="data-row"><span class="label">L (lightness)</span><span class="value" id="d-lch-l"></span></div>
+      <div class="data-row"><span class="label">C (chroma)</span><span class="value" id="d-lch-c"></span></div>
+      <div class="data-row"><span class="label">H (hue)</span><span class="value" id="d-lch-h"></span></div>
+    </div>
+    <div class="data-card">
+      <h3>LAB</h3>
+      <div class="data-row"><span class="label">L</span><span class="value" id="d-lab-l"></span></div>
+      <div class="data-row"><span class="label">a</span><span class="value" id="d-lab-a"></span></div>
+      <div class="data-row"><span class="label">b</span><span class="value" id="d-lab-b"></span></div>
+    </div>
+    <div class="data-card">
+      <h3>Versions</h3>
+      <div class="data-row"><span class="label">identity</span><span class="value" id="d-idv"></span></div>
+      <div class="data-row"><span class="label">naming</span><span class="value" id="d-namv"></span></div>
+      <div class="data-row"><span class="label">lab</span><span class="value" id="d-labv"></span></div>
+    </div>
+  </div>
 
- <div class="section-title">Registry URLs</div>
- <div class="url-block">
-   <div class="url-label">by CF ID</div>
-   <a id="url-by-id" href="#" target="_blank"></a>
- </div>
+  <div class="section-title">Registry URL</div>
+  <div class="url-block">
+    <div class="url-label">by CF ID</div>
+    <a id="url-by-id" href="#" target="_blank"></a>
+  </div>
 
- <div id="not-in-registry" style="display:none; color:#666; font-size:0.85rem; margin-bottom:32px;">
-   This colour is not in the K=20 registry. Showing computed values only.
-   The full 16.7M colour registry (K=255) is planned for v2.0.
- </div>
+  <div id="not-in-registry">
+    This colour is not in the K=20 registry. Showing computed values only.
+    The full 16.7M colour registry (K=255) is planned for v2.0.
+  </div>
 </div>
 
 <footer>
- <a href="https://github.com/mauludsadiq/Colour-in-Fard">github.com/mauludsadiq/Colour-in-Fard</a>
- &nbsp;&mdash;&nbsp; CF Registry v1.0.0 &nbsp;&mdash;&nbsp; built with FARD v1.7.1
+  <a href="https://github.com/mauludsadiq/Colour-in-Fard">github.com/mauludsadiq/Colour-in-Fard</a>
+  &nbsp;&mdash;&nbsp; CF Registry v1.0.0 &nbsp;&mdash;&nbsp; built with FARD v1.7.1
 </footer>
 
 <script>
 const BASE = "https://mauludsadiq.github.io/Colour-in-Fard/registry";
+let searchIndex = null;
+
+async function loadSearchIndex() {
+  if (searchIndex) return searchIndex;
+  try {
+    const res = await fetch(BASE + "/search_index.json");
+    searchIndex = await res.json();
+  } catch(e) { searchIndex = []; }
+  return searchIndex;
+}
 
 function hexToRgb(hex) {
- const h = hex.replace('#','');
- return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+  const h = hex.replace('#','');
+  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
 }
 
 function rgbToLab(r,g,b) {
- let r1=r/255, g1=g/255, b1=b/255;
- r1 = r1>0.04045?Math.pow((r1+0.055)/1.055,2.4):r1/12.92;
- g1 = g1>0.04045?Math.pow((g1+0.055)/1.055,2.4):g1/12.92;
- b1 = b1>0.04045?Math.pow((b1+0.055)/1.055,2.4):b1/12.92;
- let x=(r1*0.4124564+g1*0.3575761+b1*0.1804375)*100/95.047;
- let y=(r1*0.2126729+g1*0.7151522+b1*0.0721750)*100/100.000;
- let z=(r1*0.0193339+g1*0.1191920+b1*0.9503041)*100/108.883;
- const f=v=>v>0.008856?Math.pow(v,1/3):7.787*v+16/116;
- const L=116*f(y)-16, a=500*(f(x)-f(y)), bv=200*(f(y)-f(z));
- const C=Math.sqrt(a*a+bv*bv);
- let H=Math.atan2(bv,a)*180/Math.PI;
- if(H<0)H+=360;
- return {L:+L.toFixed(3),a:+a.toFixed(3),b:+bv.toFixed(3),C:+C.toFixed(3),H:+H.toFixed(3)};
-}
-
-function cfIdFromHex(hex) {
- // CF ID is computed server-side; for display we show the registry URL
- const h = hex.replace('#','').toUpperCase();
- return `CF-${h}-????????`;
+  let r1=r/255, g1=g/255, b1=b/255;
+  r1 = r1>0.04045?Math.pow((r1+0.055)/1.055,2.4):r1/12.92;
+  g1 = g1>0.04045?Math.pow((g1+0.055)/1.055,2.4):g1/12.92;
+  b1 = b1>0.04045?Math.pow((b1+0.055)/1.055,2.4):b1/12.92;
+  let x=(r1*0.4124564+g1*0.3575761+b1*0.1804375)*100/95.047;
+  let y=(r1*0.2126729+g1*0.7151522+b1*0.0721750)*100/100.000;
+  let z=(r1*0.0193339+g1*0.1191920+b1*0.9503041)*100/108.883;
+  const f=v=>v>0.008856?Math.pow(v,1/3):7.787*v+16/116;
+  const L=116*f(y)-16, a=500*(f(x)-f(y)), bv=200*(f(y)-f(z));
+  const C=Math.sqrt(a*a+bv*bv);
+  let H=Math.atan2(bv,a)*180/Math.PI;
+  if(H<0)H+=360;
+  return {L:+L.toFixed(3),a:+a.toFixed(3),b:+bv.toFixed(3),C:+C.toFixed(3),H:+H.toFixed(3)};
 }
 
 function hexPath(hex) {
- const h = hex.replace('#','').toLowerCase();
- return `${BASE}/by-hex/${h.slice(0,2)}/${h.slice(2,4)}/${h.slice(4,6)}.json`;
+  const h = hex.replace('#','').toLowerCase();
+  return `${BASE}/by-hex/${h.slice(0,2)}/${h.slice(2,4)}/${h.slice(4,6)}.json`;
 }
 
-async function lookup() {
- const input = document.getElementById('hex-input').value.trim();
- const err = document.getElementById('error-msg');
- err.textContent = '';
+function isHex(s) { return /^#?[0-9a-fA-F]{6}$/.test(s.trim()); }
 
- let hex = input.startsWith('#') ? input : '#'+input;
- if(!/^#[0-9a-fA-F]{6}$/.test(hex)) {
-   err.textContent = 'invalid hex — use format #rrggbb';
-   return;
- }
+async function handleSearch() {
+  const input = document.getElementById('hex-input').value.trim();
+  if (isHex(input)) {
+    const hex = input.startsWith('#') ? input : '#'+input;
+    await lookupHex(hex);
+  } else {
+    await searchByName(input);
+  }
+}
 
- document.getElementById('loading').style.display = 'block';
- document.getElementById('main').style.display = 'none';
+async function searchByName(query) {
+  document.getElementById('error-msg').textContent = '';
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('main').style.display = 'none';
+  document.getElementById('search-results-container').style.display = 'none';
 
- const [r,g,b] = hexToRgb(hex);
- const lab = rgbToLab(r,g,b);
+  const idx = await loadSearchIndex();
+  const q = query.toLowerCase();
+  const matches = idx.filter(e =>
+    e.name.toLowerCase().includes(q) || e.family.toLowerCase().includes(q)
+  ).slice(0, 30);
 
- let entry = null;
- try {
-   const res = await fetch(hexPath(hex));
-   if(res.ok) entry = await res.json();
- } catch(e) {}
+  document.getElementById('loading').style.display = 'none';
 
- document.getElementById('loading').style.display = 'none';
- document.getElementById('main').style.display = 'block';
+  if (matches.length === 0) {
+    document.getElementById('error-msg').textContent = 'no matches found';
+    return;
+  }
 
- const name    = entry ? entry.nearest_name : 'unknown';
- const cfid    = entry ? entry.cf_id : cfIdFromHex(hex);
- const family  = entry ? entry.family : '';
- const idv     = entry ? entry.identity_version : 'CF-ID-1.0.0';
- const namv    = entry ? entry.naming_version : '1.0.0';
- const labv    = entry ? entry.lab_version : '1.0.0';
- const url     = entry ? entry.url : hexPath(hex);
- const lch     = entry ? entry.lch : [lab.L, lab.C, lab.H];
- const labArr  = entry ? entry.lab : [lab.L, lab.a, lab.b];
- const rgbArr  = entry ? entry.rgb : [r,g,b];
+  const container = document.getElementById('search-results');
+  container.innerHTML = matches.map(e => `
+    <div class="search-result-item" onclick="lookupHex('${e.hex}')">
+      <div class="result-swatch" style="background:${e.hex}"></div>
+      <div class="result-info">
+        <div class="result-name">${e.name}</div>
+        <div class="result-hex">${e.hex} &mdash; ${e.family}</div>
+        <div class="result-cfid">${e.cf_id}</div>
+      </div>
+    </div>
+  `).join('');
 
- document.getElementById('hero-swatch').style.background = hex;
- document.getElementById('hero-name').textContent = name;
- document.getElementById('hero-cfid').innerHTML =
-   `<a href="${url}" target="_blank">${cfid}</a>`;
+  document.getElementById('search-results-container').style.display = 'block';
+}
 
- document.getElementById('hero-badges').innerHTML =
-   (family ? `<span class="badge">${family}</span>` : '') +
-   `<span class="badge">${hex.toLowerCase()}</span>`;
+async function lookupHex(hex) {
+  document.getElementById('error-msg').textContent = '';
+  document.getElementById('search-results-container').style.display = 'none';
 
- document.getElementById('d-hex').textContent = hex.toLowerCase();
- document.getElementById('d-rgb').textContent = rgbArr.join(', ');
- document.getElementById('d-cfid').textContent = cfid;
- document.getElementById('d-lch-l').textContent = lch[0];
- document.getElementById('d-lch-c').textContent = lch[1];
- document.getElementById('d-lch-h').textContent = lch[2];
- document.getElementById('d-lab-l').textContent = labArr[0];
- document.getElementById('d-lab-a').textContent = labArr[1];
- document.getElementById('d-lab-b').textContent = labArr[2];
- document.getElementById('d-idv').textContent = idv;
- document.getElementById('d-namv').textContent = namv;
- document.getElementById('d-labv').textContent = labv;
+  if(!/^#[0-9a-fA-F]{6}$/.test(hex)) {
+    document.getElementById('error-msg').textContent = 'invalid hex';
+    return;
+  }
 
- const byIdUrl = entry ? entry.url : '';
- const urlEl = document.getElementById('url-by-id');
- urlEl.textContent = byIdUrl || 'not in K=20 registry';
- urlEl.href = byIdUrl;
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('main').style.display = 'none';
 
- document.getElementById('not-in-registry').style.display = entry ? 'none' : 'block';
+  const [r,g,b] = hexToRgb(hex);
+  const lab = rgbToLab(r,g,b);
+
+  let entry = null;
+  try {
+    const res = await fetch(hexPath(hex));
+    if(res.ok) entry = await res.json();
+  } catch(e) {}
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('main').style.display = 'block';
+
+  const name   = entry ? entry.nearest_name : '—';
+  const cfid   = entry ? entry.cf_id : '(not in K=20 registry)';
+  const family = entry ? entry.family : '';
+  const idv    = entry ? entry.identity_version : 'CF-ID-1.0.0';
+  const namv   = entry ? entry.naming_version : '1.0.0';
+  const labv   = entry ? entry.lab_version : '1.0.0';
+  const url    = entry ? entry.url : '';
+  const lch    = entry ? entry.lch : [lab.L, lab.C, lab.H];
+  const labArr = entry ? entry.lab : [lab.L, lab.a, lab.b];
+  const rgbArr = entry ? entry.rgb : [r,g,b];
+
+  document.getElementById('hex-input').value = hex;
+  document.getElementById('hero-swatch').style.background = hex;
+  document.getElementById('hero-name').textContent = name;
+  document.getElementById('hero-cfid').innerHTML = url
+    ? `<a href="${url}" target="_blank">${cfid}</a>`
+    : cfid;
+
+  document.getElementById('hero-badges').innerHTML =
+    (family ? `<span class="badge">${family}</span>` : '') +
+    `<span class="badge">${hex.toLowerCase()}</span>`;
+
+  document.getElementById('d-hex').textContent = hex.toLowerCase();
+  document.getElementById('d-rgb').textContent = rgbArr.join(', ');
+  document.getElementById('d-cfid').textContent = cfid;
+  document.getElementById('d-lch-l').textContent = lch[0];
+  document.getElementById('d-lch-c').textContent = lch[1];
+  document.getElementById('d-lch-h').textContent = lch[2];
+  document.getElementById('d-lab-l').textContent = labArr[0];
+  document.getElementById('d-lab-a').textContent = labArr[1];
+  document.getElementById('d-lab-b').textContent = labArr[2];
+  document.getElementById('d-idv').textContent = idv;
+  document.getElementById('d-namv').textContent = namv;
+  document.getElementById('d-labv').textContent = labv;
+
+  const urlEl = document.getElementById('url-by-id');
+  urlEl.textContent = url || 'not in K=20 registry';
+  urlEl.href = url;
+  document.getElementById('not-in-registry').style.display = entry ? 'none' : 'block';
+}
+
+function random() {
+  const idx = Math.floor(Math.random() * 0xffffff);
+  const hex = '#' + idx.toString(16).padStart(6,'0');
+  lookupHex(hex);
 }
 
 document.getElementById('hex-input').addEventListener('keydown', e => {
- if(e.key === 'Enter') lookup();
+  if(e.key === 'Enter') handleSearch();
 });
 
-// Auto-lookup on load with example
 window.addEventListener('load', () => {
- document.getElementById('hex-input').value = '#cc0000';
- lookup();
+  document.getElementById('hex-input').value = '#cc0000';
+  lookupHex('#cc0000');
 });
 </script>
-
 </body>
 </html>
