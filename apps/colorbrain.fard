@@ -10,6 +10,7 @@ import("../src/core/rgb_lab") as lab
 import("../src/core/color_name") as cn
 import("../src/core/color_relations") as rel
 import("../src/core/receipt") as receipt
+import("../src/core/cf_id") as cf
 import("../src/export/json_catalogue") as jc
 import("../src/render/svg") as svg
 
@@ -81,16 +82,15 @@ fn main() {
     if cmd != "explain" then
       io.println("usage: colorbrain explain <hex>")
     else
-      let rgb  = parse_hex(hex) in
-      let h    = hsv.rgb_to_hsv(rgb) in
-      let l    = lab.rgb_to_lab(rgb) in
-      let lch  = lab.lab_to_lch(l) in
-      let name = cn.nearest_name(rgb) in
+      let rgb    = parse_hex(hex) in
+      let h      = hsv.rgb_to_hsv(rgb) in
+      let l      = lab.rgb_to_lab(rgb) in
+      let lch    = lab.lab_to_lch(l) in
+      let name   = cn.nearest_name(rgb) in
+      let cf_id  = cf.make_cf_id(rgb) in
       let family = if lch.c < 10.0 then "neutral" else hue_family(lch.h) in
-      let chroma_desc = chroma_label(lch.c) in
-      let light_desc  = lightness_label(lch.l) in
 
-      let comp   = rel.complement(rgb) in
+      let comp    = rel.complement(rgb) in
       let analog  = rel.analogous(rgb) in
       let triad   = rel.triadic(rgb) in
       let split   = rel.split_complementary(rgb) in
@@ -98,24 +98,20 @@ fn main() {
       let tints4  = rel.tints(rgb, 4) in
       let tones4  = rel.tones(rgb, 4) in
 
-      let out_base = str.concat(["out/colorbrain_", str.slice(jc.rgb_to_hex(rgb), 1, 7)]) in
-      let svg_path = str.concat([out_base, ".svg"]) in
+      let out_base   = str.concat(["out/colorbrain_", str.slice(jc.rgb_to_hex(rgb), 1, 7)]) in
+      let svg_path   = str.concat([out_base, ".svg"]) in
 
       let swatch_colours = list.concat([
-        [rgb, comp],
-        analog,
-        triad,
-        shades4,
-        tints4,
-        tones4
+        [rgb, comp], analog, triad, shades4, tints4, tones4
       ]) in
       let _ = svg.write_svg(swatch_colours, 5, 40, 40, svg_path) in
 
       let output = str.concat([
-        "\ninput:        ", jc.rgb_to_hex(rgb), "\n",
+        "\ncf_id:        ", cf_id, "\n",
+        "input:        ", jc.rgb_to_hex(rgb), "\n",
         "nearest_name: ", name, "\n",
         "family:       ", family, "\n",
-        "character:    ", light_desc, ", ", chroma_desc, "\n",
+        "character:    ", lightness_label(lch.l), ", ", chroma_label(lch.c), "\n",
         "\nlch:  L=", ff(lch.l), "  C=", ff(lch.c), "  H=", ff(lch.h), "\n",
         "lab:  L=", ff(l.l), "  a=", ff(l.a), "  b=", ff(l.b), "\n",
         "hsv:  H=", ff(h.h), "  S=", ff(h.s), "  V=", ff(h.v), "\n",
@@ -130,20 +126,17 @@ fn main() {
         rel_line("triadic   [2] ", list.get(triad, 2)), "\n",
         rel_line("split     [1] ", list.get(split, 1)), "\n",
         rel_line("split     [2] ", list.get(split, 2)), "\n",
-        "\nshades:  ",
-        str.join(list.map(shades4, fn(s) { jc.rgb_to_hex(s) }), "  "), "\n",
-        "tints:   ",
-        str.join(list.map(tints4,  fn(s) { jc.rgb_to_hex(s) }), "  "), "\n",
-        "tones:   ",
-        str.join(list.map(tones4,  fn(s) { jc.rgb_to_hex(s) }), "  "), "\n",
+        "\nshades:  ", str.join(list.map(shades4, fn(s) { jc.rgb_to_hex(s) }), "  "), "\n",
+        "tints:   ", str.join(list.map(tints4,  fn(s) { jc.rgb_to_hex(s) }), "  "), "\n",
+        "tones:   ", str.join(list.map(tones4,  fn(s) { jc.rgb_to_hex(s) }), "  "), "\n",
         "\nexports:\n",
         "  svg swatch: ", svg_path, "\n"
       ]) in
 
       let r = receipt.make_receipt(
         "colorbrain_explain",
-        { hex: hex },
-        { naming_version: receipt.NAMING_VERSION, lab_version: receipt.LAB_VERSION },
+        { hex: hex, cf_id: cf_id },
+        { naming_version: receipt.NAMING_VERSION, lab_version: receipt.LAB_VERSION, identity_version: cf.IDENTITY_VERSION },
         output
       ) in
       let receipt_path = receipt.receipt_path(out_base) in
