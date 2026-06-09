@@ -1,9 +1,10 @@
 # Colour in FARD
 
-A deterministic perceptual colour engine: full RGB universe, LAB naming,
-LCH relationships, multi-format exports, receiptable outputs.
+Colour-in-Fard is a deterministic perceptual colour engine where every colour
+result is reproducible, named, related, exported, and cryptographically receipted.
 
-Written entirely in FARD. No native dependencies. No FFI. No external libraries.
+Full 24-bit RGB universe. LAB naming. LCH relationships. Multi-format exports.
+Written entirely in FARD. No FFI. No native dependencies. No external libraries.
 
 ## Quickstart
 
@@ -38,33 +39,33 @@ Output:
       svg swatch: out/colorbrain_7b3f00.svg
       receipt:    out/colorbrain_7b3f00.receipt.json
 
-## What it does
+## Why This Matters
 
-- Produces all 16,777,216 colours in the 24-bit RGB space
-- Names every colour using perceptual LAB-space Delta-E nearest-match
-- Computes colour relationships in LCH space -- complement, analogous, triadic,
-  split-complementary, tetradic, shades, tints, tones
-- Exports to PPM, SVG, JSON catalogue, and CSS custom properties
-- Produces cryptographic receipts over inputs, naming table, and output bytes
-- Validated against the 140 CSS named colours -- 40/40 family matches
+Most colour tools are wrappers. They call native libraries, depend on system
+colour profiles, or produce results that vary across environments.
 
-## Colour Science
+Colour-in-Fard does not approximate. Every result is derived from first
+principles in pure FARD:
 
-All relationships and naming operate in CIELAB (L*a*b*) and LCH colour spaces.
-Hue rotation, shade/tint/tone generation, and colour distance are perceptually
-uniform -- calibrated to human vision, not RGB arithmetic.
+    sRGB gamma expansion
+    --> D65 illuminant matrix
+    --> CIELAB cube root
+    --> LCH cylindrical projection
+    --> Delta-E CIE76 nearest-name
 
-    RGB -- sRGB gamma expansion --> linear light
-    linear light -- D65 matrix --> XYZ
-    XYZ -- D65 illuminant, cube root --> LAB
-    LAB -- cylindrical projection --> LCH (L=lightness, C=chroma, H=hue)
+The math is in the repo. The receipts prove it ran. The outputs are identical
+on any machine running the same FARD version.
 
-    Delta-E (CIE76): perceptual distance between any two colours
-    Nearest name: 87 anchor colours, LAB-space nearest-match lookup
+At K=255 it covers 16,777,216 colours -- the entire 24-bit RGB space, every
+colour a standard display can show. Each one is named, related, and exportable.
+No Pantone licence required. No native colour engine. No trust required beyond
+the source.
+
+This is what a colour system looks like when built from first principles.
 
 ## Receipts
 
-Every output is reproducible and verifiable. Each run produces a receipt:
+Every output is reproducible and verifiable:
 
     {
       "kind": "colorbrain_explain",
@@ -76,6 +77,26 @@ Every output is reproducible and verifiable. Each run produces a receipt:
     }
 
 Same hex + same naming table + same LAB constants = same receipt. Always.
+
+## Validation
+
+- 81 tests across 12 suites, all passing
+- 40/40 CSS named colour corpus matched
+- 15 perceptual boundary tests: grayscale axis, hue wraparound,
+  adjacent colours, low-light, chroma boundary
+
+## Benchmarks
+
+Measured on MacBook Pro, FARD v1.7.1 interpreter (pure eval, no native compile).
+
+    Full RGB traversal (16.7M colours)   41m49s
+    PPM export K=255 (171MB streamed)    41m49s
+    Catalogue K=10 (1,331 colours)       1m6s
+    Relationship sheet SVG               0.5s
+    colorbrain explain                   0.8s
+
+See BENCHMARKS.md for notes. The --compile-linked flag would reduce these
+significantly. All timings are interpreter-only.
 
 ## Apps
 
@@ -105,26 +126,17 @@ SVG colour relationship sheet for any hex code.
 
     fardrun run --program apps/relations.fard --out out/run -- "#ff6600"
 
-## Tests
+## Colour Science
 
-81 tests across 11 suites, all passing.
+    RGB -- sRGB gamma expansion --> linear light
+    linear light -- D65 matrix --> XYZ
+    XYZ -- D65 illuminant, cube root --> LAB
+    LAB -- cylindrical projection --> LCH
 
-    fardrun test --program tests/smoke_loop.fard
-    fardrun test --program tests/test_core.fard
-    fardrun test --program tests/test_expand.fard
-    fardrun test --program tests/test_palette_colors.fard
-    fardrun test --program tests/test_render.fard
-    fardrun test --program tests/test_row_runs.fard
-    fardrun test --program tests/test_lab_roundtrip.fard
-    fardrun test --program tests/test_color_name.fard
-    fardrun test --program tests/test_color_relations.fard
-    fardrun test --program tests/test_exports.fard
-    fardrun test --program tests/test_receipt.fard
-    fardrun test --program tests/test_perceptual.fard
+    Delta-E (CIE76): perceptual distance between any two colours
+    Nearest name: 87 anchor colours, LAB-space nearest-match
 
-Validation corpus:
-
-    fardrun run --program tests/corpus_css.fard --out out/corpus -- 40/40 CSS named colours
+All relationships operate in LCH space. Hue rotation is perceptually uniform.
 
 ## Architecture
 
@@ -152,14 +164,10 @@ Validation corpus:
     apps/catalogue.fard             -- JSON + CSS + SVG catalogue
     apps/relations.fard             -- SVG relationship sheet
 
-## Performance
+## Gallery
 
-The renderer uses a collapsed image algebra: images are lists of solid rectangles,
-expanded once at the PPM emit boundary. Construction is O(m) where m = palette cells,
-not O(WH) pixels.
-
-Full spectrum output (K=255, 16.7M colours) streams in chunks of 1000 to avoid
-building a single 171MB string in memory.
+See docs/index.html for rendered examples: explain output, relationship sheets,
+palette grids, receipt verification, and benchmarks.
 
 ## Built with FARD v1.7.1
 
