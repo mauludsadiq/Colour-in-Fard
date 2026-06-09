@@ -1,0 +1,97 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/io") as io
+import("std/cli") as cli
+import("../src/core/types") as t
+import("../src/core/colorblind") as cb
+import("../src/core/color_name") as cn
+import("../src/core/cf_id") as cf
+import("../src/core/wcag") as wcag
+import("../src/core/receipt") as receipt
+import("../src/export/json_catalogue") as jc
+import("../src/render/svg") as svg
+import("../src/render/image_export") as img
+
+fn hex_char_to_int(c) {
+  if c == "0" then 0 else if c == "1" then 1 else if c == "2" then 2
+  else if c == "3" then 3 else if c == "4" then 4 else if c == "5" then 5
+  else if c == "6" then 6 else if c == "7" then 7 else if c == "8" then 8
+  else if c == "9" then 9 else if c == "a" || c == "A" then 10
+  else if c == "b" || c == "B" then 11 else if c == "c" || c == "C" then 12
+  else if c == "d" || c == "D" then 13 else if c == "e" || c == "E" then 14
+  else 15
+}
+
+fn parse_byte(s, offset) {
+  hex_char_to_int(str.slice(s, offset, offset + 1)) * 16 +
+  hex_char_to_int(str.slice(s, offset + 1, offset + 2))
+}
+
+fn parse_hex(hex) {
+  let s = if str.starts_with(hex, "#") then str.slice(hex, 1, 7) else hex in
+  let r = parse_byte(s, 0) in
+  let g = parse_byte(s, 2) in
+  let b = parse_byte(s, 4) in
+  t.rgb_f(cast.float(r) / 255.0, cast.float(g) / 255.0, cast.float(b) / 255.0)
+}
+
+fn ff2(f) { str.from_float(cast.float(cast.int(f * 100.0 + 0.5)) / 100.0) }
+
+fn sim_line(label, orig, sim) {
+  let hex_sim = jc.rgb_to_hex(sim) in
+  let name    = cn.nearest_name(sim) in
+  let ratio   = wcag.contrast_ratio(orig, sim) in
+  str.concat(["  ", label, ": ", hex_sim, " (", name, ")  delta=", ff2(ratio)])
+}
+
+fn main() {
+  let args = cli.args() in
+  if list.len(args) == 0 then
+    io.println("usage: simulate <hex>  e.g. simulate #ff6600")
+  else
+    let hex  = list.get(args, 0) in
+    let rgb  = parse_hex(hex) in
+    let s    = cb.simulate_all(rgb) in
+    let name = cn.nearest_name(rgb) in
+    let cf_id = cf.make_cf_id(rgb) in
+
+    let colours = [
+      s.original, s.protanopia, s.deuteranopia, s.tritanopia,
+      s.achromatopsia, s.protanomaly, s.deuteranomaly, s.tritanomaly
+    ] in
+
+    let out_base = str.concat(["out/simulate_", str.slice(jc.rgb_to_hex(rgb), 1, 7)]) in
+    let svg_path = str.concat([out_base, ".svg"]) in
+    let png_path = str.concat([out_base, ".png"]) in
+    let _ = svg.write_svg(colours, 8, 60, 60, svg_path) in
+    let _ = img.write_png_strip(colours, png_path) in
+
+    let output = str.concat([
+      "\noriginal:      ", jc.rgb_to_hex(rgb), " (", name, ")  ", cf_id, "\n",
+      "\ncolour blindness simulations:\n",
+      sim_line("protanopia    (no red)  ", rgb, s.protanopia), "\n",
+      sim_line("deuteranopia  (no green)", rgb, s.deuteranopia), "\n",
+      sim_line("tritanopia    (no blue) ", rgb, s.tritanopia), "\n",
+      sim_line("achromatopsia (no color)", rgb, s.achromatopsia), "\n",
+      sim_line("protanomaly   (weak red)", rgb, s.protanomaly), "\n",
+      sim_line("deuteranomaly (weak grn)", rgb, s.deuteranomaly), "\n",
+      sim_line("tritanomaly   (weak blu)", rgb, s.tritanomaly), "\n",
+      "\nexports:\n",
+      "  svg: ", svg_path, "\n",
+      "  png: ", png_path, "\n"
+    ]) in
+
+    let r = receipt.make_receipt(
+      "simulate",
+      { hex: jc.rgb_to_hex(rgb), cf_id: cf_id },
+      { naming_version: receipt.NAMING_VERSION, lab_version: receipt.LAB_VERSION },
+      output
+    ) in
+    let receipt_path = receipt.receipt_path(out_base) in
+    let _ = receipt.write_receipt(r, receipt_path) in
+    let _ = io.println(output) in
+    io.println(str.concat(["  receipt: ", receipt_path]))
+}
+
+main()

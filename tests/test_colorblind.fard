@@ -1,0 +1,102 @@
+import("std/list") as list
+import("../src/core/types") as t
+import("../src/core/colorblind") as cb
+import("../src/core/math") as m
+
+let black = t.rgb_f(0.0, 0.0, 0.0)
+let white = t.rgb_f(1.0, 1.0, 1.0)
+let grey  = t.rgb_f(0.5, 0.5, 0.5)
+let red   = t.rgb_f(1.0, 0.0, 0.0)
+let green = t.rgb_f(0.0, 1.0, 0.0)
+let blue  = t.rgb_f(0.0, 0.0, 1.0)
+
+fn close(a, b) { m.absf(a - b) < 0.01 }
+fn rgb_close(a, b) { close(a.r, b.r) && close(a.g, b.g) && close(a.b, b.b) }
+
+test "black unchanged by protanopia" {
+  rgb_close(cb.protanopia(black), black)
+}
+
+test "white unchanged by protanopia" {
+  rgb_close(cb.protanopia(white), white)
+}
+
+test "black unchanged by deuteranopia" {
+  rgb_close(cb.deuteranopia(black), black)
+}
+
+test "white unchanged by deuteranopia" {
+  rgb_close(cb.deuteranopia(white), white)
+}
+
+test "black unchanged by tritanopia" {
+  rgb_close(cb.tritanopia(black), black)
+}
+
+test "white unchanged by tritanopia" {
+  rgb_close(cb.tritanopia(white), white)
+}
+
+test "achromatopsia produces equal RGB channels for red" {
+  let s = cb.achromatopsia(red) in
+  close(s.r, s.g) && close(s.g, s.b)
+}
+
+test "achromatopsia produces equal RGB channels for green" {
+  let s = cb.achromatopsia(green) in
+  close(s.r, s.g) && close(s.g, s.b)
+}
+
+test "achromatopsia black is black" {
+  rgb_close(cb.achromatopsia(black), black)
+}
+
+test "achromatopsia white is white" {
+  rgb_close(cb.achromatopsia(white), white)
+}
+
+test "protanopia changes red" {
+  let s = cb.protanopia(red) in
+  !close(s.r, red.r)
+}
+
+test "deuteranopia changes green" {
+  let s = cb.deuteranopia(green) in
+  !close(s.g, green.g)
+}
+
+test "tritanopia changes blue" {
+  let s = cb.tritanopia(blue) in
+  !close(s.b, blue.b)
+}
+
+test "protanomaly is between original and protanopia" {
+  let sim  = cb.protanopia(red) in
+  let anom = cb.protanomaly(red) in
+  m.absf(anom.r - red.r) < m.absf(sim.r - red.r)
+}
+
+test "deuteranomaly is between original and deuteranopia" {
+  let sim  = cb.deuteranopia(green) in
+  let anom = cb.deuteranomaly(green) in
+  m.absf(anom.g - green.g) < m.absf(sim.g - green.g)
+}
+
+test "simulate_all returns 8 fields" {
+  let s = cb.simulate_all(red) in
+  s.original.r == red.r &&
+  s.protanopia.r >= 0.0 &&
+  s.deuteranopia.r >= 0.0 &&
+  s.tritanopia.r >= 0.0 &&
+  s.achromatopsia.r >= 0.0 &&
+  s.protanomaly.r >= 0.0 &&
+  s.deuteranomaly.r >= 0.0 &&
+  s.tritanomaly.r >= 0.0
+}
+
+test "all simulations produce valid RGB range" {
+  let s = cb.simulate_all(t.rgb_f(0.8, 0.3, 0.1)) in
+  s.protanopia.r <= 1.0 && s.protanopia.r >= 0.0 &&
+  s.deuteranopia.g <= 1.0 && s.deuteranopia.g >= 0.0 &&
+  s.tritanopia.b <= 1.0 && s.tritanopia.b >= 0.0
+}
