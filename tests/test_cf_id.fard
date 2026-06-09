@@ -1,0 +1,67 @@
+import("std/str") as str
+import("std/list") as list
+import("../src/core/types") as t
+import("../src/core/cf_id") as cf
+
+test "CF ID starts with CF-" {
+  str.starts_with(cf.make_cf_id(t.rgb_f(0.482, 0.247, 0.0)), "CF-")
+}
+
+test "CF ID has correct format CF-HEX6-HASH8" {
+  let id = cf.make_cf_id(t.rgb_f(123.0/255.0, 63.0/255.0, 0.0)) in
+  str.starts_with(id, "CF-7B3F00-") && str.len(id) == 18
+}
+
+test "same RGB always produces same CF ID" {
+  let rgb = t.rgb_f(0.5, 0.3, 0.8) in
+  cf.make_cf_id(rgb) == cf.make_cf_id(rgb)
+}
+
+test "different RGB produces different CF ID" {
+  cf.make_cf_id(t.rgb_f(1.0, 0.0, 0.0)) != cf.make_cf_id(t.rgb_f(0.0, 0.0, 1.0))
+}
+
+test "black CF ID" {
+  str.starts_with(cf.make_cf_id(t.rgb_f(0.0, 0.0, 0.0)), "CF-000000-")
+}
+
+test "white CF ID" {
+  str.starts_with(cf.make_cf_id(t.rgb_f(1.0, 1.0, 1.0)), "CF-FFFFFF-")
+}
+
+test "7B3F00 CF ID is stable" {
+  cf.make_cf_id(t.rgb_f(123.0/255.0, 63.0/255.0, 0.0)) == "CF-7B3F00-EA262463"
+}
+
+test "FF0000 CF ID is stable" {
+  str.starts_with(cf.make_cf_id(t.rgb_f(1.0, 0.0, 0.0)), "CF-FF0000-")
+}
+
+test "entry has cf_id" {
+  let e = cf.make_entry(t.rgb_f(123.0/255.0, 63.0/255.0, 0.0)) in
+  str.starts_with(e.cf_id, "CF-7B3F00-")
+}
+
+test "entry has hex" {
+  let e = cf.make_entry(t.rgb_f(123.0/255.0, 63.0/255.0, 0.0)) in
+  e.hex == "#7b3f00"
+}
+
+test "entry rgb array correct" {
+  let e = cf.make_entry(t.rgb_f(1.0, 0.0, 0.0)) in
+  list.get(e.rgb, 0) == 255 && list.get(e.rgb, 1) == 0 && list.get(e.rgb, 2) == 0
+}
+
+test "entry has identity version" {
+  let e = cf.make_entry(t.rgb_f(1.0, 0.0, 0.0)) in
+  e.identity_version == "CF-ID-1.0.0"
+}
+
+test "LAB hash is 8 chars" {
+  let l = { l: 53.241, a: 80.092, b: 67.203 } in
+  str.len(cf.lab_hash8(l)) == 8
+}
+
+test "CF IDs are unique for adjacent RGB values" {
+  cf.make_cf_id(t.rgb_f(100.0/255.0, 0.0, 0.0)) != cf.make_cf_id(t.rgb_f(101.0/255.0, 0.0, 0.0))
+}
