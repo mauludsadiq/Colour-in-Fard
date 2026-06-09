@@ -1,0 +1,73 @@
+import("std/list") as list
+import("../src/core/types") as t
+import("../src/core/oklab") as ok
+import("../src/core/math") as m
+
+fn close(a, b) { m.absf(a - b) < 0.001 }
+fn rgb_close(a, b) { close(a.r, b.r) && close(a.g, b.g) && close(a.b, b.b) }
+
+test "black has L=0 in OKLab" {
+  let lab = ok.rgb_to_oklab(t.rgb_f(0.0, 0.0, 0.0)) in
+  close(lab.l, 0.0)
+}
+
+test "white has L=1 in OKLab" {
+  let lab = ok.rgb_to_oklab(t.rgb_f(1.0, 1.0, 1.0)) in
+  close(lab.l, 1.0)
+}
+
+test "grey is neutral in OKLab" {
+  let lab = ok.rgb_to_oklab(t.rgb_f(0.5, 0.5, 0.5)) in
+  close(lab.a, 0.0) && close(lab.b, 0.0)
+}
+
+test "red roundtrip" {
+  let rgb = t.rgb_f(1.0, 0.0, 0.0) in
+  rgb_close(ok.oklab_to_rgb(ok.rgb_to_oklab(rgb)), rgb)
+}
+
+test "green roundtrip" {
+  let rgb = t.rgb_f(0.0, 1.0, 0.0) in
+  rgb_close(ok.oklab_to_rgb(ok.rgb_to_oklab(rgb)), rgb)
+}
+
+test "blue roundtrip" {
+  let rgb = t.rgb_f(0.0, 0.0, 1.0) in
+  rgb_close(ok.oklab_to_rgb(ok.rgb_to_oklab(rgb)), rgb)
+}
+
+test "mid colour roundtrip" {
+  let rgb = t.rgb_f(0.5, 0.3, 0.8) in
+  rgb_close(ok.oklab_to_rgb(ok.rgb_to_oklab(rgb)), rgb)
+}
+
+test "oklch roundtrip" {
+  let rgb = t.rgb_f(0.8, 0.3, 0.1) in
+  rgb_close(ok.oklch_to_rgb(ok.rgb_to_oklch(rgb)), rgb)
+}
+
+test "delta_e_ok black to white is large" {
+  let b = ok.rgb_to_oklab(t.rgb_f(0.0, 0.0, 0.0)) in
+  let w = ok.rgb_to_oklab(t.rgb_f(1.0, 1.0, 1.0)) in
+  ok.delta_e_ok(b, w) > 0.9
+}
+
+test "delta_e_ok identical is zero" {
+  let lab = ok.rgb_to_oklab(t.rgb_f(0.5, 0.3, 0.8)) in
+  ok.delta_e_ok(lab, lab) < 0.0001
+}
+
+test "delta_e_ok is symmetric" {
+  let r = ok.rgb_to_oklab(t.rgb_f(1.0, 0.0, 0.0)) in
+  let b = ok.rgb_to_oklab(t.rgb_f(0.0, 0.0, 1.0)) in
+  m.absf(ok.delta_e_ok(r, b) - ok.delta_e_ok(b, r)) < 0.0001
+}
+
+test "OKLab lightness is monotone for greys" {
+  let l0 = ok.rgb_to_oklab(t.rgb_f(0.0,  0.0,  0.0)).l in
+  let l1 = ok.rgb_to_oklab(t.rgb_f(0.25, 0.25, 0.25)).l in
+  let l2 = ok.rgb_to_oklab(t.rgb_f(0.5,  0.5,  0.5)).l in
+  let l3 = ok.rgb_to_oklab(t.rgb_f(0.75, 0.75, 0.75)).l in
+  let l4 = ok.rgb_to_oklab(t.rgb_f(1.0,  1.0,  1.0)).l in
+  l0 < l1 && l1 < l2 && l2 < l3 && l3 < l4
+}
