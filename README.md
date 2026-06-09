@@ -5,7 +5,7 @@ result is reproducible, named, related, exported, and cryptographically receipte
 
 Full 24-bit RGB universe. LAB naming. LCH relationships. Multi-format exports.
 Written entirely in FARD. No FFI. No native dependencies. No external libraries.
-2,904 lines of FARD.
+3,538 lines of FARD.
 
 ## Quickstart
 
@@ -128,7 +128,7 @@ Every colour output is available in:
 
 ## Validation
 
-- 95+ tests across 13 suites, all passing
+- 135 tests across 18 suites, all passing
 - 40/40 CSS named colour corpus matched
 - 15 perceptual boundary tests: grayscale axis, hue wraparound,
  adjacent colours, low-light, chroma boundary
