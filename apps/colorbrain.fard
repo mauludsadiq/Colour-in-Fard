@@ -99,8 +99,9 @@ fn main() {
       let tints4  = rel.tints(rgb, 4) in
       let tones4  = rel.tones(rgb, 4) in
 
-      let out_base = str.concat(["out/colorbrain_", str.slice(jc.rgb_to_hex(rgb), 1, 7)]) in
-      let svg_path = str.concat([out_base, ".svg"]) in
+      let out_base     = str.concat(["out/colorbrain_", str.slice(jc.rgb_to_hex(rgb), 1, 7)]) in
+      let svg_path     = str.concat([out_base, ".svg"]) in
+      let receipt_path = receipt.receipt_path(out_base) in
 
       let swatch_colours = list.concat([
         [rgb, comp], analog, triad, shades4, tints4, tones4
@@ -133,12 +134,13 @@ fn main() {
         "tints:   ", str.join(list.map(tints4,  fn(s) { jc.rgb_to_hex(s) }), "  "), "\n",
         "tones:   ", str.join(list.map(tones4,  fn(s) { jc.rgb_to_hex(s) }), "  "), "\n",
         "\nexports:\n",
-        "  svg:  ", svg_path, "\n",
-        "  png:  ", img_paths.png, "\n",
-        "  jpg:  ", img_paths.jpg, "\n",
-        "  bmp:  ", img_paths.bmp, "\n",
-        "  tiff: ", img_paths.tiff, "\n",
-        "  heic: ", img_paths.heic, "\n"
+        "  svg:     ", svg_path, "\n",
+        "  png:     ", img_paths.png, "\n",
+        "  jpg:     ", img_paths.jpg, "\n",
+        "  bmp:     ", img_paths.bmp, "\n",
+        "  tiff:    ", img_paths.tiff, "\n",
+        "  heic:    ", img_paths.heic, "\n",
+        "  receipt: ", receipt_path, "\n"
       ]) in
 
       let r = receipt.make_receipt(
@@ -147,11 +149,8 @@ fn main() {
         { naming_version: receipt.NAMING_VERSION, lab_version: receipt.LAB_VERSION, identity_version: cf.IDENTITY_VERSION },
         output
       ) in
-      let receipt_path = receipt.receipt_path(out_base) in
       let _ = receipt.write_receipt(r, receipt_path) in
-
-      let _ = io.println(output) in
-      io.println(str.concat(["  receipt:    ", receipt_path]))
+      io.println(output)
 }
 
 main()
