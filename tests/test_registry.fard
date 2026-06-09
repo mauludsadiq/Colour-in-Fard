@@ -4,18 +4,14 @@ import("std/fs") as fs
 import("std/json") as json
 import("../src/core/types") as t
 import("../src/core/cf_id") as cf
-import("../src/core/receipt") as receipt
-import("../src/export/json_catalogue") as jc
-
-// Tests assume K=3 registry has been built in docs/registry
 
 test "index.json exists" {
   fs.exists("docs/registry/index.json")
 }
 
-test "index has correct total for K=3" {
+test "index has correct total for K=20" {
   let idx = json.decode(fs.read_text("docs/registry/index.json")) in
-  idx.total == 64
+  idx.total == 9261
 }
 
 test "index has correct version" {
@@ -51,9 +47,9 @@ test "entry has all required fields" {
   str.len(e.url) > 0
 }
 
-test "entry url matches expected pattern" {
+test "entry url contains github pages domain" {
   let e = json.decode(fs.read_text("docs/registry/by-id/CF-000000-86165F20.json")) in
-  str.starts_with(e.url, "/registry/by-id/CF-")
+  str.contains(e.url, "mauludsadiq.github.io")
 }
 
 test "entry cf_id matches filename" {
@@ -61,17 +57,17 @@ test "entry cf_id matches filename" {
   e.cf_id == "CF-000000-86165F20"
 }
 
-test "receipt exists for K=3" {
-  fs.exists("docs/registry/receipts/registry_K3.receipt.json")
+test "receipt exists for K=20" {
+  fs.exists("docs/registry/receipts/registry_K20.receipt.json")
 }
 
 test "receipt has correct kind" {
-  let r = json.decode(fs.read_text("docs/registry/receipts/registry_K3.receipt.json")) in
+  let r = json.decode(fs.read_text("docs/registry/receipts/registry_K20.receipt.json")) in
   r.kind == "registry"
 }
 
 test "receipt input_digest is sha256" {
-  let r = json.decode(fs.read_text("docs/registry/receipts/registry_K3.receipt.json")) in
+  let r = json.decode(fs.read_text("docs/registry/receipts/registry_K20.receipt.json")) in
   str.starts_with(r.input_digest, "sha256:")
 }
 
