@@ -1,0 +1,103 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/io") as io
+import("std/fs") as fs
+import("std/cli") as cli
+import("../src/core/types") as t
+import("../src/core/cf_id") as cf
+import("../src/core/color_name") as cn
+import("../src/core/rgb_lab") as lab
+import("../src/core/rgb_hsv") as hsv
+import("../src/core/receipt") as receipt
+import("../src/export/json_catalogue") as jc
+
+fn main() {
+  let args = cli.args() in
+  let k = if list.len(args) > 0 then cast.int(list.get(args, 0)) else 5 in
+  let n = k + 1 in
+  let total = n * n * n in
+  let out_path = str.concat(["out/registry_K", str.from_int(k), ".ndjson"]) in
+
+  let _ = io.println(str.concat(["CF Registry K=", str.from_int(k), " -- ", str.from_int(total), " colours"])) in
+  let _ = fs.write_text(out_path, "") in
+
+  let chunk = 500 in
+  let chunks = total / chunk in
+
+  let _ = list.fold(list.range(0, chunks), 0, fn(_, ci) {
+    let start = ci * chunk in
+    let lines = list.build(chunk, fn(j) {
+      let i = start + j in
+      let ri = i / (n * n) in
+      let gi = (i / n) % n in
+      let bi = i % n in
+      let rgb = t.rgb_f(
+        cast.float(ri) * 255.0 / cast.float(k) / 255.0,
+        cast.float(gi) * 255.0 / cast.float(k) / 255.0,
+        cast.float(bi) * 255.0 / cast.float(k) / 255.0
+      ) in
+      let entry = cf.make_entry(rgb) in
+      let l_val = lab.rgb_to_lab(rgb) in
+      let lch_val = lab.lab_to_lch(l_val) in
+      let full = {
+        cf_id:            entry.cf_id,
+        hex:              entry.hex,
+        rgb:              entry.rgb,
+        lab:              entry.lab,
+        lch:              entry.lch,
+        nearest_name:     cn.nearest_name(rgb),
+        identity_version: entry.identity_version,
+        naming_version:   receipt.NAMING_VERSION
+      } in
+      str.concat([
+        "{\"cf_id\":\"", full.cf_id, "\",",
+        "\"hex\":\"", full.hex, "\",",
+        "\"rgb\":[", str.from_int(list.get(full.rgb, 0)), ",", str.from_int(list.get(full.rgb, 1)), ",", str.from_int(list.get(full.rgb, 2)), "],",
+        "\"nearest_name\":\"", full.nearest_name, "\",",
+        "\"identity_version\":\"", full.identity_version, "\",",
+        "\"naming_version\":\"", full.naming_version, "\"}"
+      ])
+    }) in
+    io.append_file(out_path, str.concat([str.join(lines, "\n"), "\n"]))
+  }) in
+
+  let remainder = total % chunk in
+  let _ = if remainder > 0 then
+    let start = chunks * chunk in
+    let lines = list.build(remainder, fn(j) {
+      let i = start + j in
+      let ri = i / (n * n) in
+      let gi = (i / n) % n in
+      let bi = i % n in
+      let rgb = t.rgb_f(
+        cast.float(ri) * 255.0 / cast.float(k) / 255.0,
+        cast.float(gi) * 255.0 / cast.float(k) / 255.0,
+        cast.float(bi) * 255.0 / cast.float(k) / 255.0
+      ) in
+      let entry = cf.make_entry(rgb) in
+      str.concat([
+        "{\"cf_id\":\"", entry.cf_id, "\",",
+        "\"hex\":\"", entry.hex, "\",",
+        "\"rgb\":[", str.from_int(list.get(entry.rgb, 0)), ",", str.from_int(list.get(entry.rgb, 1)), ",", str.from_int(list.get(entry.rgb, 2)), "],",
+        "\"nearest_name\":\"", cn.nearest_name(rgb), "\",",
+        "\"identity_version\":\"", entry.identity_version, "\",",
+        "\"naming_version\":\"", receipt.NAMING_VERSION, "\"}"
+      ])
+    }) in
+    io.append_file(out_path, str.concat([str.join(lines, "\n"), "\n"]))
+  else
+    null
+  in
+
+  let r = receipt.make_receipt(
+    "registry",
+    { k: k, total: total },
+    { identity_version: cf.IDENTITY_VERSION, naming_version: receipt.NAMING_VERSION },
+    out_path
+  ) in
+  let _ = receipt.write_receipt(r, receipt.receipt_path(str.concat(["out/registry_K", str.from_int(k)]))) in
+  io.println(str.concat(["wrote ", out_path]))
+}
+
+main()
