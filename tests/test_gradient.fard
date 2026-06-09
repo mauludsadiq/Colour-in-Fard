@@ -1,0 +1,71 @@
+import("std/list") as list
+import("../src/core/types") as t
+import("../src/core/gradient") as grad
+import("../src/core/math") as m
+
+let black = t.rgb_f(0.0, 0.0, 0.0)
+let white = t.rgb_f(1.0, 1.0, 1.0)
+let red   = t.rgb_f(1.0, 0.0, 0.0)
+let blue  = t.rgb_f(0.0, 0.0, 1.0)
+
+fn close(a, b) { m.absf(a - b) < 0.01 }
+
+test "gradient_lab returns correct step count" {
+  list.len(grad.gradient_lab(black, white, 5)) == 5
+}
+
+test "gradient_lch returns correct step count" {
+  list.len(grad.gradient_lch(red, blue, 8)) == 8
+}
+
+test "gradient_rgb returns correct step count" {
+  list.len(grad.gradient_rgb(black, white, 3)) == 3
+}
+
+test "gradient_lab starts at rgb1" {
+  let g = grad.gradient_lab(black, white, 5) in
+  let c = list.get(g, 0) in
+  close(c.r, 0.0) && close(c.g, 0.0) && close(c.b, 0.0)
+}
+
+test "gradient_lab ends at rgb2" {
+  let g = grad.gradient_lab(black, white, 5) in
+  let c = list.get(g, 4) in
+  close(c.r, 1.0) && close(c.g, 1.0) && close(c.b, 1.0)
+}
+
+test "gradient_lch starts at rgb1" {
+  let g = grad.gradient_lch(red, blue, 5) in
+  let c = list.get(g, 0) in
+  close(c.r, 1.0) && close(c.g, 0.0) && close(c.b, 0.0)
+}
+
+test "gradient_lch ends at rgb2" {
+  let g = grad.gradient_lch(red, blue, 5) in
+  let c = list.get(g, 4) in
+  close(c.r, 0.0) && close(c.g, 0.0) && close(c.b, 1.0)
+}
+
+test "gradient_lab midpoint is between endpoints" {
+  let g = grad.gradient_lab(black, white, 3) in
+  let mid = list.get(g, 1) in
+  mid.r > 0.0 && mid.r < 1.0
+}
+
+test "gradient_lch midpoint is between endpoints" {
+  let g = grad.gradient_lch(black, white, 3) in
+  let mid = list.get(g, 1) in
+  mid.r > 0.0 && mid.r < 1.0
+}
+
+test "gradient minimum 2 steps enforced" {
+  list.len(grad.gradient_lab(black, white, 1)) == 2
+}
+
+test "gradient_lab and gradient_rgb differ for chromatic colours" {
+  let g_lab = grad.gradient_lab(red, blue, 3) in
+  let g_rgb = grad.gradient_rgb(red, blue, 3) in
+  let mid_lab = list.get(g_lab, 1) in
+  let mid_rgb = list.get(g_rgb, 1) in
+  !(m.absf(mid_lab.r - mid_rgb.r) < 0.001 && m.absf(mid_lab.g - mid_rgb.g) < 0.001 && m.absf(mid_lab.b - mid_rgb.b) < 0.001)
+}

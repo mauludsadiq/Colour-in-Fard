@@ -1,0 +1,77 @@
+import("std/list") as list
+import("std/cast") as cast
+import("../core/types") as t
+import("../core/rgb_lab") as lab
+import("../core/math") as m
+
+// Interpolate between two LAB values at position t in [0,1]
+fn lerp_lab(lab1, lab2, t_val) {
+  t.lab(
+    lab1.l + (lab2.l - lab1.l) * t_val,
+    lab1.a + (lab2.a - lab1.a) * t_val,
+    lab1.b + (lab2.b - lab1.b) * t_val
+  )
+}
+
+// Interpolate between two LCH values at position t in [0,1]
+// Hue interpolation takes the shortest arc
+fn lerp_lch(lch1, lch2, t_val) {
+  let h1 = lch1.h in
+  let h2 = lch2.h in
+  let dh = h2 - h1 in
+  let dh_short =
+    if dh > 180.0 then dh - 360.0
+    else if dh < -180.0 then dh + 360.0
+    else dh
+  in
+  t.lch(
+    lch1.l + (lch2.l - lch1.l) * t_val,
+    lch1.c + (lch2.c - lch1.c) * t_val,
+    m.mod360(h1 + dh_short * t_val)
+  )
+}
+
+// Generate n steps between two RGB colours in LAB space
+fn gradient_lab(rgb1, rgb2, steps) {
+  let lab1 = lab.rgb_to_lab(rgb1) in
+  let lab2 = lab.rgb_to_lab(rgb2) in
+  let n = if steps < 2 then 2 else steps in
+  list.build(n, fn(i) {
+    let t_val = cast.float(i) / cast.float(n - 1) in
+    let mid = lerp_lab(lab1, lab2, t_val) in
+    lab.lab_to_rgb(mid)
+  })
+}
+
+// Generate n steps between two RGB colours in LCH space
+fn gradient_lch(rgb1, rgb2, steps) {
+  let lch1 = lab.rgb_to_lch(rgb1) in
+  let lch2 = lab.rgb_to_lch(rgb2) in
+  let n = if steps < 2 then 2 else steps in
+  list.build(n, fn(i) {
+    let t_val = cast.float(i) / cast.float(n - 1) in
+    let mid = lerp_lch(lch1, lch2, t_val) in
+    lab.lab_to_rgb(lab.lch_to_lab(mid))
+  })
+}
+
+// Generate n steps between two RGB colours in RGB space (for comparison)
+fn gradient_rgb(rgb1, rgb2, steps) {
+  let n = if steps < 2 then 2 else steps in
+  list.build(n, fn(i) {
+    let t_val = cast.float(i) / cast.float(n - 1) in
+    t.rgb_f(
+      rgb1.r + (rgb2.r - rgb1.r) * t_val,
+      rgb1.g + (rgb2.g - rgb1.g) * t_val,
+      rgb1.b + (rgb2.b - rgb1.b) * t_val
+    )
+  })
+}
+
+{
+  lerp_lab:     lerp_lab,
+  lerp_lch:     lerp_lch,
+  gradient_lab: gradient_lab,
+  gradient_lch: gradient_lch,
+  gradient_rgb: gradient_rgb
+}

@@ -1,0 +1,95 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/io") as io
+import("std/cli") as cli
+import("../src/core/types") as t
+import("../src/core/gradient") as grad
+import("../src/core/color_name") as cn
+import("../src/core/cf_id") as cf
+import("../src/core/receipt") as receipt
+import("../src/export/json_catalogue") as jc
+import("../src/render/svg") as svg
+
+fn hex_char_to_int(c) {
+  if c == "0" then 0 else if c == "1" then 1 else if c == "2" then 2
+  else if c == "3" then 3 else if c == "4" then 4 else if c == "5" then 5
+  else if c == "6" then 6 else if c == "7" then 7 else if c == "8" then 8
+  else if c == "9" then 9 else if c == "a" || c == "A" then 10
+  else if c == "b" || c == "B" then 11 else if c == "c" || c == "C" then 12
+  else if c == "d" || c == "D" then 13 else if c == "e" || c == "E" then 14
+  else 15
+}
+
+fn parse_byte(s, offset) {
+  hex_char_to_int(str.slice(s, offset, offset + 1)) * 16 +
+  hex_char_to_int(str.slice(s, offset + 1, offset + 2))
+}
+
+fn parse_hex(hex) {
+  let s = if str.starts_with(hex, "#") then str.slice(hex, 1, 7) else hex in
+  let r = parse_byte(s, 0) in
+  let g = parse_byte(s, 2) in
+  let b = parse_byte(s, 4) in
+  t.rgb_f(cast.float(r) / 255.0, cast.float(g) / 255.0, cast.float(b) / 255.0)
+}
+
+fn main() {
+  let args = cli.args() in
+  if list.len(args) < 2 then
+    io.println("usage: gradient <hex1> <hex2> [steps]  e.g. gradient #ff0000 #0000ff 7")
+  else
+    let hex1  = list.get(args, 0) in
+    let hex2  = list.get(args, 1) in
+    let steps = if list.len(args) > 2 then cast.int(list.get(args, 2)) else 7 in
+    let rgb1  = parse_hex(hex1) in
+    let rgb2  = parse_hex(hex2) in
+
+    let g_lab = grad.gradient_lab(rgb1, rgb2, steps) in
+    let g_lch = grad.gradient_lch(rgb1, rgb2, steps) in
+    let g_rgb = grad.gradient_rgb(rgb1, rgb2, steps) in
+
+    let out_base = str.concat(["out/gradient_",
+      str.slice(jc.rgb_to_hex(rgb1), 1, 7), "_",
+      str.slice(jc.rgb_to_hex(rgb2), 1, 7)]) in
+
+    let _ = svg.write_svg(g_lab, steps, 40, 40, str.concat([out_base, "_lab.svg"])) in
+    let _ = svg.write_svg(g_lch, steps, 40, 40, str.concat([out_base, "_lch.svg"])) in
+    let _ = svg.write_svg(g_rgb, steps, 40, 40, str.concat([out_base, "_rgb.svg"])) in
+
+    let _ = io.println(str.concat(["\nfrom: ", jc.rgb_to_hex(rgb1), " (", cn.nearest_name(rgb1), ")  ", cf.make_cf_id(rgb1)])) in
+    let _ = io.println(str.concat(["to:   ", jc.rgb_to_hex(rgb2), " (", cn.nearest_name(rgb2), ")  ", cf.make_cf_id(rgb2)])) in
+    let _ = io.println(str.concat(["steps: ", str.from_int(steps), "\n"])) in
+
+    let _ = io.println("LAB gradient:") in
+    let _ = list.fold(g_lab, 0, fn(_, c) {
+      io.println(str.concat(["  ", jc.rgb_to_hex(c), "  ", cn.nearest_name(c)]))
+    }) in
+
+    let _ = io.println("\nLCH gradient:") in
+    let _ = list.fold(g_lch, 0, fn(_, c) {
+      io.println(str.concat(["  ", jc.rgb_to_hex(c), "  ", cn.nearest_name(c)]))
+    }) in
+
+    let _ = io.println("\nRGB gradient (for comparison):") in
+    let _ = list.fold(g_rgb, 0, fn(_, c) {
+      io.println(str.concat(["  ", jc.rgb_to_hex(c), "  ", cn.nearest_name(c)]))
+    }) in
+
+    let output = str.concat([hex1, " -> ", hex2, " steps=", str.from_int(steps)]) in
+    let r = receipt.make_receipt(
+      "gradient",
+      { hex1: jc.rgb_to_hex(rgb1), hex2: jc.rgb_to_hex(rgb2), steps: steps },
+      { naming_version: receipt.NAMING_VERSION, lab_version: receipt.LAB_VERSION },
+      output
+    ) in
+    let receipt_path = receipt.receipt_path(out_base) in
+    let _ = receipt.write_receipt(r, receipt_path) in
+
+    let _ = io.println(str.concat(["\nsvg (lab): ", out_base, "_lab.svg"])) in
+    let _ = io.println(str.concat(["svg (lch): ", out_base, "_lch.svg"])) in
+    let _ = io.println(str.concat(["svg (rgb): ", out_base, "_rgb.svg"])) in
+    io.println(str.concat(["receipt:   ", receipt_path]))
+}
+
+main()
