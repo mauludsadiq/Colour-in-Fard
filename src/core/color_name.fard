@@ -140,8 +140,29 @@ fn nearest_name_with_dist(rgb) {
   })
 }
 
+
+import("../core/delta_e2000") as de2000
+
+fn nearest_name_de2000(rgb) {
+  let target_lab = lab.rgb_to_lab(rgb) in
+  let result = list.fold(named_labs, { name: "unknown", dist: 1000000.0 }, fn(acc, entry) {
+    let d = de2000.delta_e2000(target_lab, entry.lab) in
+    if d < acc.dist then { name: entry.name, dist: d } else acc
+  }) in
+  result.name
+}
+
+fn nearest_name_with_dist_de2000(rgb) {
+  let target_lab = lab.rgb_to_lab(rgb) in
+  list.fold(named_labs, { name: "unknown", dist: 1000000.0, rgb: rgb }, fn(acc, entry) {
+    let d = de2000.delta_e2000(target_lab, entry.lab) in
+    if d < acc.dist then { name: entry.name, dist: d, rgb: entry.rgb } else acc
+  })
+}
 {
   named_colors: named_colors,
   nearest_name: nearest_name,
-  nearest_name_with_dist: nearest_name_with_dist
+  nearest_name_with_dist: nearest_name_with_dist,
+  nearest_name_de2000: nearest_name_de2000,
+  nearest_name_with_dist_de2000: nearest_name_with_dist_de2000
 }

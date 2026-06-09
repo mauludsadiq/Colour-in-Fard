@@ -1,0 +1,100 @@
+import("std/math") as math
+import("../core/math") as m
+
+// CIEDE2000 -- the current standard for perceptual colour difference
+// Significantly more accurate than CIE76 especially for:
+//   - low chroma colours (near grays)
+//   - blue hues (hue rotation term)
+//   - saturated colours at similar lightness
+// Reference: Sharma et al. 2005
+
+fn deg_to_rad(d) {
+  d * math.pi / 180.0
+}
+
+fn rad_to_deg(r) {
+  r * 180.0 / math.pi
+}
+
+fn pow7(x) {
+  let x2 = x * x in
+  let x4 = x2 * x2 in
+  x4 * x2 * x
+}
+
+fn delta_e2000(lab1, lab2) {
+  // Step 1: compute C*ab
+  let c1 = math.sqrt(lab1.a * lab1.a + lab1.b * lab1.b) in
+  let c2 = math.sqrt(lab2.a * lab2.a + lab2.b * lab2.b) in
+
+  // Step 2: compute a' (adjusted a)
+  let c_avg = (c1 + c2) / 2.0 in
+  let c_avg7 = pow7(c_avg) in
+  let g = 0.5 * (1.0 - math.sqrt(c_avg7 / (c_avg7 + 6103515625.0))) in
+  let a1p = lab1.a * (1.0 + g) in
+  let a2p = lab2.a * (1.0 + g) in
+
+  // Step 3: compute C' and h'
+  let c1p = math.sqrt(a1p * a1p + lab1.b * lab1.b) in
+  let c2p = math.sqrt(a2p * a2p + lab2.b * lab2.b) in
+
+  let h1p_raw = rad_to_deg(math.atan2(lab1.b, a1p)) in
+  let h1p = if h1p_raw < 0.0 then h1p_raw + 360.0 else h1p_raw in
+  let h2p_raw = rad_to_deg(math.atan2(lab2.b, a2p)) in
+  let h2p = if h2p_raw < 0.0 then h2p_raw + 360.0 else h2p_raw in
+
+  // Step 4: delta L', delta C', delta h', delta H'
+  let dl = lab2.l - lab1.l in
+  let dcp = c2p - c1p in
+
+  let dhp =
+    if c1p * c2p == 0.0 then 0.0
+    else if m.absf(h2p - h1p) <= 180.0 then h2p - h1p
+    else if h2p - h1p > 180.0 then h2p - h1p - 360.0
+    else h2p - h1p + 360.0
+  in
+  let dHp = 2.0 * math.sqrt(c1p * c2p) * math.sin(deg_to_rad(dhp / 2.0)) in
+
+  // Step 5: CIEDE2000 weighting functions
+  let lp_avg = (lab1.l + lab2.l) / 2.0 in
+  let cp_avg = (c1p + c2p) / 2.0 in
+
+  let hp_avg =
+    if c1p * c2p == 0.0 then h1p + h2p
+    else if m.absf(h1p - h2p) <= 180.0 then (h1p + h2p) / 2.0
+    else if h1p + h2p < 360.0 then (h1p + h2p + 360.0) / 2.0
+    else (h1p + h2p - 360.0) / 2.0
+  in
+
+  let t = 1.0
+    - 0.17 * math.cos(deg_to_rad(hp_avg - 30.0))
+    + 0.24 * math.cos(deg_to_rad(2.0 * hp_avg))
+    + 0.32 * math.cos(deg_to_rad(3.0 * hp_avg + 6.0))
+    - 0.20 * math.cos(deg_to_rad(4.0 * hp_avg - 63.0))
+  in
+
+  let sl_inner = (lp_avg - 50.0) * (lp_avg - 50.0) in
+  let sl = 1.0 + 0.015 * sl_inner / math.sqrt(20.0 + sl_inner) in
+  let sc = 1.0 + 0.045 * cp_avg in
+  let sh = 1.0 + 0.015 * cp_avg * t in
+
+  let cp_avg7 = pow7(cp_avg) in
+  let rc = 2.0 * math.sqrt(cp_avg7 / (cp_avg7 + 6103515625.0)) in
+  let d_theta = 30.0 * math.exp(0.0 - ((hp_avg - 275.0) / 25.0) * ((hp_avg - 275.0) / 25.0)) in
+  let rt = 0.0 - math.sin(deg_to_rad(2.0 * d_theta)) * rc in
+
+  let term_l  = dl / sl in
+  let term_c  = dcp / sc in
+  let term_h  = dHp / sh in
+
+  math.sqrt(
+    term_l * term_l +
+    term_c * term_c +
+    term_h * term_h +
+    rt * term_c * term_h
+  )
+}
+
+{
+  delta_e2000: delta_e2000
+}

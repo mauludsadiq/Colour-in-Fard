@@ -1,0 +1,81 @@
+import("../src/core/types") as t
+import("../src/core/delta_e2000") as de2000
+import("../src/core/rgb_lab") as lab
+import("../src/core/math") as m
+
+fn close(a, b, eps) { m.absf(a - b) < eps }
+
+// Sharma 2005 test pairs -- known CIEDE2000 values
+// These are the canonical verification cases for any CIEDE2000 implementation
+
+test "sharma pair 1" {
+  let lab1 = t.lab(50.0000,  2.6772, -79.7751) in
+  let lab2 = t.lab(50.0000,  0.0000, -82.7485) in
+  close(de2000.delta_e2000(lab1, lab2), 2.0425, 0.001)
+}
+
+test "sharma pair 2" {
+  let lab1 = t.lab(50.0000,  3.1571, -77.2803) in
+  let lab2 = t.lab(50.0000,  0.0000, -82.7485) in
+  close(de2000.delta_e2000(lab1, lab2), 2.8615, 0.001)
+}
+
+test "sharma pair 3" {
+  let lab1 = t.lab(50.0000,  2.8361, -74.0200) in
+  let lab2 = t.lab(50.0000,  0.0000, -82.7485) in
+  close(de2000.delta_e2000(lab1, lab2), 3.4412, 0.001)
+}
+
+test "sharma pair 4" {
+  let lab1 = t.lab(50.0000, -1.3802, -84.2814) in
+  let lab2 = t.lab(50.0000,  0.0000, -82.7485) in
+  close(de2000.delta_e2000(lab1, lab2), 1.0000, 0.001)
+}
+
+test "sharma pair 5" {
+  let lab1 = t.lab(50.0000, -1.1848, -84.8006) in
+  let lab2 = t.lab(50.0000,  0.0000, -82.7485) in
+  close(de2000.delta_e2000(lab1, lab2), 1.0000, 0.001)
+}
+
+test "sharma pair 6" {
+  let lab1 = t.lab(50.0000, -0.9009, -85.5211) in
+  let lab2 = t.lab(50.0000,  0.0000, -82.7485) in
+  close(de2000.delta_e2000(lab1, lab2), 1.0000, 0.001)
+}
+
+// Symmetry
+test "delta_e2000 is symmetric" {
+  let lab1 = t.lab(50.0, 25.0, -10.0) in
+  let lab2 = t.lab(60.0, -5.0,  30.0) in
+  m.absf(de2000.delta_e2000(lab1, lab2) - de2000.delta_e2000(lab2, lab1)) < 0.0001
+}
+
+// Identity
+test "identical colours have zero distance" {
+  let lab1 = t.lab(53.389, 80.812, 67.234) in
+  de2000.delta_e2000(lab1, lab1) < 0.0001
+}
+
+// Delta-E 2000 > 0 for different colours
+test "different colours have positive distance" {
+  let lab1 = lab.rgb_to_lab(t.rgb_f(1.0, 0.0, 0.0)) in
+  let lab2 = lab.rgb_to_lab(t.rgb_f(0.0, 0.0, 1.0)) in
+  de2000.delta_e2000(lab1, lab2) > 0.0
+}
+
+// DE2000 vs CIE76 -- should differ for blue hues
+test "DE2000 and CIE76 differ for blue hues" {
+  let lab1 = lab.rgb_to_lab(t.rgb_f(0.0, 0.0, 0.8)) in
+  let lab2 = lab.rgb_to_lab(t.rgb_f(0.1, 0.0, 0.9)) in
+  let de76  = lab.delta_e(lab1, lab2) in
+  let de00  = de2000.delta_e2000(lab1, lab2) in
+  m.absf(de76 - de00) > 0.01
+}
+
+// Black and white maximum distance
+test "black and white have large distance" {
+  let black = lab.rgb_to_lab(t.rgb_f(0.0, 0.0, 0.0)) in
+  let white = lab.rgb_to_lab(t.rgb_f(1.0, 1.0, 1.0)) in
+  de2000.delta_e2000(black, white) > 90.0
+}

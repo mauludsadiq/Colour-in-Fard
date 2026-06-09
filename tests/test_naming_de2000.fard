@@ -1,0 +1,32 @@
+import("../src/core/types") as t
+import("../src/core/color_name") as cn
+
+test "DE2000 red names as red" {
+  cn.nearest_name_de2000(t.rgb_f(1.0, 0.0, 0.0)) == "red"
+}
+
+test "DE2000 white names as white" {
+  cn.nearest_name_de2000(t.rgb_f(1.0, 1.0, 1.0)) == "white"
+}
+
+test "DE2000 black names as black" {
+  cn.nearest_name_de2000(t.rgb_f(0.0, 0.0, 0.0)) == "black"
+}
+
+test "DE2000 navy names as navy" {
+  cn.nearest_name_de2000(t.rgb_f(0.0, 0.0, 0.5)) == "navy"
+}
+
+test "DE2000 orange names as orange" {
+  cn.nearest_name_de2000(t.rgb_f(1.0, 0.5, 0.0)) == "orange"
+}
+
+test "DE2000 and CIE76 agree on primaries" {
+  cn.nearest_name(t.rgb_f(1.0, 0.0, 0.0)) == cn.nearest_name_de2000(t.rgb_f(1.0, 0.0, 0.0)) &&
+  cn.nearest_name(t.rgb_f(0.0, 0.0, 1.0)) == cn.nearest_name_de2000(t.rgb_f(0.0, 0.0, 1.0))
+}
+
+test "DE2000 with_dist returns name and dist" {
+  let r = cn.nearest_name_with_dist_de2000(t.rgb_f(1.0, 0.0, 0.0)) in
+  r.name == "red" && r.dist >= 0.0
+}
