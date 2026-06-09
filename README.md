@@ -277,3 +277,24 @@ Example contrast receipt:
     }
 
 When making accessibility claims, cite the receipt file, not fard_run_digest.
+
+## CF Registry — Live
+
+The CF Registry is publicly accessible at:
+
+    https://mauludsadiq.github.io/Colour-in-Fard/registry/index.json
+
+Resolve any colour by CF ID:
+
+    https://mauludsadiq.github.io/Colour-in-Fard/registry/by-id/CF-CC0000-791976F7.json
+
+Resolve any colour by hex:
+
+    https://mauludsadiq.github.io/Colour-in-Fard/registry/by-hex/cc/00/00.json
+
+Browse by R-channel shard:
+
+    https://mauludsadiq.github.io/Colour-in-Fard/registry/shards/cc.ndjson
+
+CF-CC0000-791976F7 is not a local label.
+It is a resolvable, verifiable colour identity.
