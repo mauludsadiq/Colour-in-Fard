@@ -5,6 +5,7 @@ result is reproducible, named, related, exported, and cryptographically receipte
 
 Full 24-bit RGB universe. LAB naming. LCH relationships. Multi-format exports.
 Written entirely in FARD. No FFI. No native dependencies. No external libraries.
+2,904 lines of FARD.
 
 ## Quickstart
 
@@ -37,13 +38,25 @@ Output:
    tones:   #7b3f00  #73431a  #69472c  #5e4b3e  #4f4f4f
 
    exports:
-     svg:  out/colorbrain_7b3f00.svg
-     png:  out/colorbrain_7b3f00.png
-     jpg:  out/colorbrain_7b3f00.jpg
-     bmp:  out/colorbrain_7b3f00.bmp
-     tiff: out/colorbrain_7b3f00.tiff
-     heic: out/colorbrain_7b3f00.heic
+     svg:     out/colorbrain_7b3f00.svg
+     png:     out/colorbrain_7b3f00.png
+     jpg:     out/colorbrain_7b3f00.jpg
+     bmp:     out/colorbrain_7b3f00.bmp
+     tiff:    out/colorbrain_7b3f00.tiff
+     heic:    out/colorbrain_7b3f00.heic
      receipt: out/colorbrain_7b3f00.receipt.json
+
+## Lookup
+
+Resolve any hex or CF ID to its full colour entry:
+
+   fardrun run --program apps/lookup.fard --out out/run -- "#7B3F00"
+   fardrun run --program apps/lookup.fard --out out/run -- "CF-7B3F00-EA262463"
+
+CF ID verification is built in. A tampered hash is rejected:
+
+   fardrun run --program apps/lookup.fard --out out/run -- "CF-7B3F00-00000000"
+   error: CF ID mismatch -- expected CF-7B3F00-EA262463 for hex #7b3f00
 
 ## Why This Matters
 
@@ -129,6 +142,7 @@ Measured on MacBook Pro, FARD v1.7.1 interpreter (pure eval, no native compile).
    Catalogue K=10 (1,331 colours)       1m6s
    Relationship sheet SVG               0.5s
    colorbrain explain (all 6 formats)   0.8s
+   lookup by hex or CF-ID               0.5s
 
 See BENCHMARKS.md for notes.
 
@@ -139,6 +153,12 @@ Full colour profile: CF ID, name, family, character, LCH, LAB, HSV, RGB,
 relationships, shades, tints, tones, exports in 6 formats, receipt.
 
    fardrun run --program apps/colorbrain.fard --out out/run -- explain "#7B3F00"
+
+### lookup
+Resolve a hex code or CF ID to its full colour entry. Verifies CF ID integrity.
+
+   fardrun run --program apps/lookup.fard --out out/run -- "#7B3F00"
+   fardrun run --program apps/lookup.fard --out out/run -- "CF-7B3F00-EA262463"
 
 ### registry
 Generate the CF registry as receipted NDJSON. One entry per colour.
@@ -199,6 +219,7 @@ SVG colour relationship sheet for any hex code.
    src/export/json_catalogue.fard  -- hex, name, RGB, HSV, LAB, LCH per colour
    src/export/css.fard             -- CSS custom properties
    apps/colorbrain.fard            -- flagship: explain any colour, all formats
+   apps/lookup.fard                -- resolve hex or CF-ID to full entry
    apps/registry.fard              -- CF registry NDJSON generator
    apps/full_spectrum.fard         -- generate all 16.7M colours
    apps/query.fard                 -- hex in, full JSON profile out
@@ -214,8 +235,9 @@ palette grids, receipt verification, and benchmarks.
 
    v1.0.0  Complete -- perceptual engine, LAB/LCH, naming, exports, receipts
    v1.1.0  Complete -- CF-ID v1.0.0, registry generator, multi-format export
-   v1.2.0  Planned  -- public searchable registry, browsable atlas
-   v1.3.0  Planned  -- CMYK conversion, ICC profile support
+   v1.2.0  Complete -- registry lookup, CF-ID verification, clean output
+   v1.3.0  Planned  -- public searchable registry, browsable atlas
+   v1.4.0  Planned  -- CMYK conversion, ICC profile support
    v2.0.0  Planned  -- industry workflow integrations
 
 ## Built with FARD v1.7.1
