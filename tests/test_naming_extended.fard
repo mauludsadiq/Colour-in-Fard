@@ -1,0 +1,22 @@
+import("../src/core/types") as t
+import("../src/core/color_name") as cn
+
+// Neons
+test "electric green"  { cn.nearest_name(t.rgb_f(0.224, 1.0,   0.078)) == "electric green" }
+test "neon pink"       { cn.nearest_name(t.rgb_f(1.0,   0.431, 0.780)) == "neon pink" }
+test "neon red"        { cn.nearest_name(t.rgb_f(1.0,   0.027, 0.227)) == "neon red" }
+test "electric lime"   { cn.nearest_name(t.rgb_f(0.800, 1.0,   0.0))   == "electric lime" }
+test "neon orange"     { cn.nearest_name(t.rgb_f(1.0,   0.624, 0.0))   == "neon orange" }
+test "neon yellow"     { cn.nearest_name(t.rgb_f(0.698, 1.0,   0.349)) == "neon yellow" }
+
+// Gray ladder
+test "near white"  { cn.nearest_name(t.rgb_f(0.961, 0.961, 0.961)) == "near white" }
+test "off white"   { cn.nearest_name(t.rgb_f(0.910, 0.910, 0.910)) == "off white" }
+test "light grey"  { cn.nearest_name(t.rgb_f(0.827, 0.827, 0.827)) == "light grey" }
+test "mid gray"    { cn.nearest_name(t.rgb_f(0.663, 0.663, 0.663)) == "mid gray" }
+test "dark gray"   { cn.nearest_name(t.rgb_f(0.412, 0.412, 0.412)) == "dark gray" }
+test "near black"  { cn.nearest_name(t.rgb_f(0.102, 0.102, 0.102)) == "near black" }
+
+// Violet-cast darks
+test "charcoal violet cast low"  { cn.nearest_name(t.rgb_f(0.173, 0.173, 0.180)) == "charcoal" }
+test "charcoal violet cast high" { cn.nearest_name(t.rgb_f(0.227, 0.227, 0.235)) == "charcoal" }

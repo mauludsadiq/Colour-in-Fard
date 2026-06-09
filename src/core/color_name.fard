@@ -92,7 +92,31 @@ let named_colors = [
   { name: "bronze",       rgb: t.rgb_f(0.804,  0.498,  0.196)  },
   { name: "champagne",    rgb: t.rgb_f(0.970,  0.910,  0.761)  },
   { name: "ecru",         rgb: t.rgb_f(0.761,  0.698,  0.561)  },
-  { name: "buff",         rgb: t.rgb_f(0.941,  0.863,  0.510)  }
+  { name: "buff",         rgb: t.rgb_f(0.941,  0.863,  0.510)  },
+
+  { name: "electric green",   rgb: t.rgb_f(0.224,  1.0,    0.078)  },
+  { name: "neon pink",        rgb: t.rgb_f(1.0,    0.431,  0.780)  },
+  { name: "neon red",         rgb: t.rgb_f(1.0,    0.027,  0.227)  },
+  { name: "electric lime",    rgb: t.rgb_f(0.800,  1.0,    0.0)    },
+  { name: "electric blue",    rgb: t.rgb_f(0.118,  0.565,  1.0)    },
+  { name: "neon yellow",      rgb: t.rgb_f(0.698,  1.0,    0.349)  },
+  { name: "neon orange",      rgb: t.rgb_f(1.0,    0.624,  0.0)    },
+  { name: "electric cyan",    rgb: t.rgb_f(0.0,    1.0,    1.0)    },
+  { name: "neon purple",      rgb: t.rgb_f(0.698,  0.133,  1.0)    },
+  { name: "electric yellow",  rgb: t.rgb_f(1.0,    1.0,    0.0)    },
+
+  { name: "near white",       rgb: t.rgb_f(0.961,  0.961,  0.961)  },
+  { name: "off white",        rgb: t.rgb_f(0.933,  0.933,  0.933)  },
+  { name: "light gray",       rgb: t.rgb_f(0.878,  0.878,  0.878)  },
+  { name: "light grey",       rgb: t.rgb_f(0.827,  0.827,  0.827)  },
+  { name: "mid gray",         rgb: t.rgb_f(0.663,  0.663,  0.663)  },
+  { name: "mid grey",         rgb: t.rgb_f(0.600,  0.600,  0.600)  },
+  { name: "dark gray",        rgb: t.rgb_f(0.412,  0.412,  0.412)  },
+  { name: "dark grey",        rgb: t.rgb_f(0.330,  0.330,  0.330)  },
+  { name: "near black",       rgb: t.rgb_f(0.102,  0.102,  0.102)  },
+  { name: "off black",        rgb: t.rgb_f(0.063,  0.063,  0.063)  },
+  { name: "charcoal",          rgb: t.rgb_f(0.173,  0.173,  0.180)  },
+  { name: "charcoal",          rgb: t.rgb_f(0.227,  0.227,  0.235)  }
 ]
 
 let named_labs = list.map(named_colors, fn(entry) {
