@@ -8,10 +8,10 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0f0f0f; color: #e8e8e8; min-height: 100vh; }
     header { padding: 32px 40px 24px; border-bottom: 1px solid #1e1e1e; display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
-    header h1 { font-size: 1.1rem; font-weight: 600; color: #fff; letter-spacing: -0.3px; }
+    header h1 { font-size: 1.1rem; font-weight: 600; color: #fff; }
     header span { font-size: 0.75rem; color: #555; font-family: monospace; }
     .search-bar { display: flex; gap: 10px; padding: 24px 40px; border-bottom: 1px solid #1a1a1a; align-items: center; flex-wrap: wrap; }
-    .search-bar input { background: #1a1a1a; border: 1px solid #2a2a2a; color: #e8e8e8; padding: 10px 16px; border-radius: 6px; font-size: 0.95rem; font-family: monospace; width: 180px; outline: none; }
+    .search-bar input { background: #1a1a1a; border: 1px solid #2a2a2a; color: #e8e8e8; padding: 10px 16px; border-radius: 6px; font-size: 0.95rem; font-family: monospace; width: 220px; outline: none; }
     .search-bar input:focus { border-color: #444; }
     .search-bar button { background: #e8e8e8; color: #0f0f0f; border: none; padding: 10px 20px; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
     .search-bar button:hover { background: #fff; }
@@ -27,6 +27,8 @@
     .colour-meta .cf-id a:hover { text-decoration: underline; }
     .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
     .badge { padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 500; border: 1px solid #333; color: #aaa; }
+    .badge.pass { border-color: #2a4a2a; color: #6db86d; }
+    .badge.fail { border-color: #4a2a2a; color: #b86d6d; }
     .data-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 40px; }
     .data-card { background: #141414; border: 1px solid #1e1e1e; border-radius: 8px; padding: 20px; }
     .data-card h3 { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #555; margin-bottom: 12px; }
@@ -34,7 +36,14 @@
     .data-row:last-child { border-bottom: none; }
     .data-row .label { color: #666; }
     .data-row .value { color: #e8e8e8; font-family: monospace; }
-    .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #555; margin-bottom: 16px; }
+    .data-row .pass { color: #6db86d; }
+    .data-row .fail { color: #b86d6d; }
+    .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #555; margin-bottom: 16px; margin-top: 8px; }
+    .sim-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 40px; }
+    .sim-card { background: #141414; border: 1px solid #1e1e1e; border-radius: 8px; padding: 14px; }
+    .sim-swatch { width: 100%; height: 48px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.06); margin-bottom: 10px; }
+    .sim-label { font-size: 0.75rem; color: #888; margin-bottom: 4px; }
+    .sim-hex { font-size: 0.8rem; font-family: monospace; color: #e8e8e8; }
     .url-block { background: #141414; border: 1px solid #1e1e1e; border-radius: 8px; padding: 16px 20px; font-family: monospace; font-size: 0.78rem; color: #7eb8f7; word-break: break-all; margin-bottom: 32px; }
     .url-block .url-label { color: #555; font-size: 0.7rem; margin-bottom: 6px; }
     #not-in-registry { display:none; color:#666; font-size:0.85rem; margin-bottom:32px; }
@@ -44,12 +53,12 @@
     .result-swatch { width: 32px; height: 32px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.06); flex-shrink: 0; }
     .result-info { flex: 1; }
     .result-name { font-size: 0.9rem; color: #e8e8e8; }
-    .result-hex { font-size: 0.75rem; color: #666; font-family: monospace; }
-    .result-cfid { font-size: 0.7rem; color: #7eb8f7; font-family: monospace; }
+    .result-sub { font-size: 0.75rem; color: #666; font-family: monospace; }
     footer { padding: 32px 40px; border-top: 1px solid #1a1a1a; color: #444; font-size: 0.75rem; }
     footer a { color: #555; text-decoration: none; }
     footer a:hover { color: #aaa; }
     .loading { color: #555; font-size: 0.85rem; padding: 24px 40px; }
+    #search-results-container { padding: 0 40px; display: none; }
   </style>
 </head>
 <body>
@@ -60,7 +69,7 @@
 </header>
 
 <div class="search-bar">
-  <input type="text" id="hex-input" placeholder="#cc0000 or 'scarlet'" maxlength="40" />
+  <input type="text" id="hex-input" placeholder="#cc0000 or name" maxlength="40" />
   <button onclick="handleSearch()">Lookup</button>
   <button class="secondary" onclick="random()">Random</button>
   <span class="error" id="error-msg"></span>
@@ -68,7 +77,7 @@
 
 <div class="loading" id="loading" style="display:none">resolving...</div>
 
-<div id="search-results-container" style="padding:0 40px; display:none">
+<div id="search-results-container">
   <div class="section-title" style="padding-top:24px">Name search results</div>
   <div class="search-results" id="search-results"></div>
 </div>
@@ -97,10 +106,11 @@
       <div class="data-row"><span class="label">H (hue)</span><span class="value" id="d-lch-h"></span></div>
     </div>
     <div class="data-card">
-      <h3>LAB</h3>
-      <div class="data-row"><span class="label">L</span><span class="value" id="d-lab-l"></span></div>
-      <div class="data-row"><span class="label">a</span><span class="value" id="d-lab-a"></span></div>
-      <div class="data-row"><span class="label">b</span><span class="value" id="d-lab-b"></span></div>
+      <h3>WCAG Contrast on White</h3>
+      <div class="data-row"><span class="label">ratio</span><span class="value" id="d-wcag-ratio"></span></div>
+      <div class="data-row"><span class="label">AA normal</span><span class="value" id="d-aa-normal"></span></div>
+      <div class="data-row"><span class="label">AA large</span><span class="value" id="d-aa-large"></span></div>
+      <div class="data-row"><span class="label">AAA normal</span><span class="value" id="d-aaa-normal"></span></div>
     </div>
     <div class="data-card">
       <h3>Versions</h3>
@@ -110,12 +120,14 @@
     </div>
   </div>
 
+  <div class="section-title">Colour Blindness Simulations</div>
+  <div class="sim-grid" id="sim-grid"></div>
+
   <div class="section-title">Registry URL</div>
   <div class="url-block">
     <div class="url-label">by CF ID</div>
     <a id="url-by-id" href="#" target="_blank"></a>
   </div>
-
   <div id="not-in-registry">
     This colour is not in the K=20 registry. Showing computed values only.
     The full 16.7M colour registry (K=255) is planned for v2.0.
@@ -145,19 +157,76 @@ function hexToRgb(hex) {
   return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
 }
 
+function srgbToLinear(c) {
+  c /= 255;
+  return c <= 0.04045 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4);
+}
+
+function linearToSrgb(c) {
+  c = Math.max(0, Math.min(1, c));
+  return Math.round((c <= 0.0031308 ? 12.92*c : 1.055*Math.pow(c,1/2.4)-0.055) * 255);
+}
+
+function applyMatrix(r,g,b, m) {
+  const lr=srgbToLinear(r), lg=srgbToLinear(g), lb=srgbToLinear(b);
+  return [
+    linearToSrgb(m[0]*lr + m[1]*lg + m[2]*lb),
+    linearToSrgb(m[3]*lr + m[4]*lg + m[5]*lb),
+    linearToSrgb(m[6]*lr + m[7]*lg + m[8]*lb)
+  ];
+}
+
+function toHex(r,g,b) {
+  return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');
+}
+
+function simulateAll(hex) {
+  const [r,g,b] = hexToRgb(hex);
+  const sims = {
+    'Protanopia\n(no red)':     [0.56667,0.43333,0, 0.55833,0.44167,0, 0,0.24167,0.75833],
+    'Deuteranopia\n(no green)': [0.625,0.375,0, 0.70,0.30,0, 0,0.30,0.70],
+    'Tritanopia\n(no blue)':    [0.95,0.05,0, 0,0.43333,0.56667, 0,0.475,0.525],
+    'Achromatopsia\n(no colour)':[0.2126,0.7152,0.0722, 0.2126,0.7152,0.0722, 0.2126,0.7152,0.0722],
+    'Protanomaly\n(weak red)':  null,
+    'Deuteranomaly\n(weak grn)':null,
+    'Tritanomaly\n(weak blu)':  null,
+  };
+  const results = {};
+  const protan = applyMatrix(r,g,b, sims['Protanopia\n(no red)']);
+  const deutan = applyMatrix(r,g,b, sims['Deuteranopia\n(no green)']);
+  const tritan = applyMatrix(r,g,b, sims['Tritanopia\n(no blue)']);
+  results['Original'] = [r,g,b];
+  results['Protanopia\n(no red)'] = protan;
+  results['Deuteranopia\n(no green)'] = deutan;
+  results['Tritanopia\n(no blue)'] = tritan;
+  results['Achromatopsia\n(no colour)'] = applyMatrix(r,g,b, sims['Achromatopsia\n(no colour)']);
+  results['Protanomaly\n(weak red)'] = protan.map((v,i)=>Math.round((v+[r,g,b][i])/2));
+  results['Deuteranomaly\n(weak grn)'] = deutan.map((v,i)=>Math.round((v+[r,g,b][i])/2));
+  results['Tritanomaly\n(weak blu)'] = tritan.map((v,i)=>Math.round((v+[r,g,b][i])/2));
+  return results;
+}
+
+function relativeLuminance(hex) {
+  const [r,g,b] = hexToRgb(hex);
+  return 0.2126*srgbToLinear(r) + 0.7152*srgbToLinear(g) + 0.0722*srgbToLinear(b);
+}
+
+function contrastRatio(hex1, hex2) {
+  const l1=relativeLuminance(hex1), l2=relativeLuminance(hex2);
+  const lighter=Math.max(l1,l2), darker=Math.min(l1,l2);
+  return (lighter+0.05)/(darker+0.05);
+}
+
 function rgbToLab(r,g,b) {
-  let r1=r/255, g1=g/255, b1=b/255;
-  r1 = r1>0.04045?Math.pow((r1+0.055)/1.055,2.4):r1/12.92;
-  g1 = g1>0.04045?Math.pow((g1+0.055)/1.055,2.4):g1/12.92;
-  b1 = b1>0.04045?Math.pow((b1+0.055)/1.055,2.4):b1/12.92;
+  let r1=srgbToLinear(r*255)/255*255, g1=srgbToLinear(g*255)/255*255, b1=srgbToLinear(b*255)/255*255;
+  r1=srgbToLinear(r); g1=srgbToLinear(g); b1=srgbToLinear(b);
   let x=(r1*0.4124564+g1*0.3575761+b1*0.1804375)*100/95.047;
-  let y=(r1*0.2126729+g1*0.7151522+b1*0.0721750)*100/100.000;
+  let y=(r1*0.2126729+g1*0.7151522+b1*0.0721750)*100/100;
   let z=(r1*0.0193339+g1*0.1191920+b1*0.9503041)*100/108.883;
   const f=v=>v>0.008856?Math.pow(v,1/3):7.787*v+16/116;
   const L=116*f(y)-16, a=500*(f(x)-f(y)), bv=200*(f(y)-f(z));
   const C=Math.sqrt(a*a+bv*bv);
-  let H=Math.atan2(bv,a)*180/Math.PI;
-  if(H<0)H+=360;
+  let H=Math.atan2(bv,a)*180/Math.PI; if(H<0)H+=360;
   return {L:+L.toFixed(3),a:+a.toFixed(3),b:+bv.toFixed(3),C:+C.toFixed(3),H:+H.toFixed(3)};
 }
 
@@ -183,59 +252,46 @@ async function searchByName(query) {
   document.getElementById('loading').style.display = 'block';
   document.getElementById('main').style.display = 'none';
   document.getElementById('search-results-container').style.display = 'none';
-
   const idx = await loadSearchIndex();
   const q = query.toLowerCase();
   const matches = idx.filter(e =>
     e.name.toLowerCase().includes(q) || e.family.toLowerCase().includes(q)
   ).slice(0, 30);
-
   document.getElementById('loading').style.display = 'none';
-
   if (matches.length === 0) {
     document.getElementById('error-msg').textContent = 'no matches found';
     return;
   }
-
-  const container = document.getElementById('search-results');
-  container.innerHTML = matches.map(e => `
+  document.getElementById('search-results').innerHTML = matches.map(e => `
     <div class="search-result-item" onclick="lookupHex('${e.hex}')">
       <div class="result-swatch" style="background:${e.hex}"></div>
       <div class="result-info">
         <div class="result-name">${e.name}</div>
-        <div class="result-hex">${e.hex} &mdash; ${e.family}</div>
-        <div class="result-cfid">${e.cf_id}</div>
+        <div class="result-sub">${e.hex} &mdash; ${e.family}</div>
+        <div class="result-sub">${e.cf_id}</div>
       </div>
-    </div>
-  `).join('');
-
+    </div>`).join('');
   document.getElementById('search-results-container').style.display = 'block';
 }
 
 async function lookupHex(hex) {
   document.getElementById('error-msg').textContent = '';
   document.getElementById('search-results-container').style.display = 'none';
-
   if(!/^#[0-9a-fA-F]{6}$/.test(hex)) {
     document.getElementById('error-msg').textContent = 'invalid hex';
     return;
   }
-
   document.getElementById('loading').style.display = 'block';
   document.getElementById('main').style.display = 'none';
-
   const [r,g,b] = hexToRgb(hex);
   const lab = rgbToLab(r,g,b);
-
   let entry = null;
   try {
     const res = await fetch(hexPath(hex));
     if(res.ok) entry = await res.json();
   } catch(e) {}
-
   document.getElementById('loading').style.display = 'none';
   document.getElementById('main').style.display = 'block';
-
   const name   = entry ? entry.nearest_name : '—';
   const cfid   = entry ? entry.cf_id : '(not in K=20 registry)';
   const family = entry ? entry.family : '';
@@ -246,31 +302,39 @@ async function lookupHex(hex) {
   const lch    = entry ? entry.lch : [lab.L, lab.C, lab.H];
   const labArr = entry ? entry.lab : [lab.L, lab.a, lab.b];
   const rgbArr = entry ? entry.rgb : [r,g,b];
-
+  const ratio  = contrastRatio(hex, '#ffffff');
+  const aaN = ratio >= 4.5, aaL = ratio >= 3.0, aaaN = ratio >= 7.0;
   document.getElementById('hex-input').value = hex;
   document.getElementById('hero-swatch').style.background = hex;
   document.getElementById('hero-name').textContent = name;
   document.getElementById('hero-cfid').innerHTML = url
-    ? `<a href="${url}" target="_blank">${cfid}</a>`
-    : cfid;
-
+    ? `<a href="${url}" target="_blank">${cfid}</a>` : cfid;
   document.getElementById('hero-badges').innerHTML =
     (family ? `<span class="badge">${family}</span>` : '') +
-    `<span class="badge">${hex.toLowerCase()}</span>`;
-
+    `<span class="badge">${hex.toLowerCase()}</span>` +
+    `<span class="badge ${aaN?'pass':'fail'}">${aaN?'AA pass':'AA fail'}</span>`;
   document.getElementById('d-hex').textContent = hex.toLowerCase();
   document.getElementById('d-rgb').textContent = rgbArr.join(', ');
   document.getElementById('d-cfid').textContent = cfid;
   document.getElementById('d-lch-l').textContent = lch[0];
   document.getElementById('d-lch-c').textContent = lch[1];
   document.getElementById('d-lch-h').textContent = lch[2];
-  document.getElementById('d-lab-l').textContent = labArr[0];
-  document.getElementById('d-lab-a').textContent = labArr[1];
-  document.getElementById('d-lab-b').textContent = labArr[2];
+  document.getElementById('d-wcag-ratio').textContent = ratio.toFixed(2) + ':1';
+  document.getElementById('d-aa-normal').innerHTML = `<span class="${aaN?'pass':'fail'}">${aaN?'pass':'FAIL'}</span>`;
+  document.getElementById('d-aa-large').innerHTML  = `<span class="${aaL?'pass':'fail'}">${aaL?'pass':'FAIL'}</span>`;
+  document.getElementById('d-aaa-normal').innerHTML= `<span class="${aaaN?'pass':'fail'}">${aaaN?'pass':'FAIL'}</span>`;
   document.getElementById('d-idv').textContent = idv;
   document.getElementById('d-namv').textContent = namv;
   document.getElementById('d-labv').textContent = labv;
-
+  const sims = simulateAll(hex);
+  document.getElementById('sim-grid').innerHTML = Object.entries(sims).map(([label,[sr,sg,sb]])=>{
+    const sh = toHex(sr,sg,sb);
+    return `<div class="sim-card">
+      <div class="sim-swatch" style="background:${sh}"></div>
+      <div class="sim-label">${label.replace('\n','<br>')}</div>
+      <div class="sim-hex">${sh}</div>
+    </div>`;
+  }).join('');
   const urlEl = document.getElementById('url-by-id');
   urlEl.textContent = url || 'not in K=20 registry';
   urlEl.href = url;
@@ -278,13 +342,12 @@ async function lookupHex(hex) {
 }
 
 function random() {
-  const idx = Math.floor(Math.random() * 0xffffff);
-  const hex = '#' + idx.toString(16).padStart(6,'0');
+  const hex = '#'+Math.floor(Math.random()*0xffffff).toString(16).padStart(6,'0');
   lookupHex(hex);
 }
 
 document.getElementById('hex-input').addEventListener('keydown', e => {
-  if(e.key === 'Enter') handleSearch();
+  if(e.key==='Enter') handleSearch();
 });
 
 window.addEventListener('load', () => {
