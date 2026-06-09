@@ -243,3 +243,37 @@ palette grids, receipt verification, and benchmarks.
 ## Built with FARD v1.7.1
 
 https://github.com/mauludsadiq/FARD
+
+## Receipt Verification Model
+
+Two digest levels exist in this system:
+
+**fard_run_digest** -- program-level. SHA256 of the source modules. Identical
+across runs of the same program regardless of inputs. Use this to verify you
+are running unmodified code.
+
+**App receipts** -- per-run. Written to out/*.receipt.json by every app.
+Binds inputs, outputs, CF IDs, naming version, and LAB version to specific
+digests. Different inputs always produce different input_digest and
+output_digest. This is the verification artifact for public claims.
+
+Example contrast receipt:
+
+    {
+      "kind": "contrast",
+      "inputs": {
+        "fg_hex": "#7b3f00",
+        "bg_hex": "#ffffff",
+        "fg_cf_id": "CF-7B3F00-EA262463",
+        "bg_cf_id": "CF-FFFFFF-2DD4EB92",
+        "ratio": 8.22,
+        "level": "AAA"
+      },
+      "input_digest":  "sha256:32893ba1...",
+      "output_digest": "sha256:10eebac9...",
+      "naming_version": "1.0.0",
+      "lab_version": "1.0.0",
+      "identity_version": "CF-ID-1.0.0"
+    }
+
+When making accessibility claims, cite the receipt file, not fard_run_digest.
