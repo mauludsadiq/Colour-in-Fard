@@ -1,0 +1,52 @@
+import("std/list") as list
+import("std/str") as str
+import("std/fs") as fs
+import("../src/core/types") as t
+import("../src/render/image_export") as img
+
+let colours = [
+  t.rgb_f(1.0, 0.0, 0.0),
+  t.rgb_f(0.0, 1.0, 0.0),
+  t.rgb_f(0.0, 0.0, 1.0),
+  t.rgb_f(1.0, 1.0, 0.0),
+  t.rgb_f(0.0, 1.0, 1.0)
+]
+
+test "colours_to_pixels length" {
+  list.len(img.colours_to_pixels(colours)) == 15
+}
+
+test "red pixel is 255 0 0" {
+  let px = img.colours_to_pixels([t.rgb_f(1.0, 0.0, 0.0)]) in
+  list.get(px, 0) == 255 && list.get(px, 1) == 0 && list.get(px, 2) == 0
+}
+
+test "write_png_strip produces file" {
+  let _ = img.write_png_strip(colours, "out/test_strip.png") in
+  fs.exists("out/test_strip.png")
+}
+
+test "write_png_grid produces file" {
+  let _ = img.write_png_grid(colours, 3, 20, 20, "out/test_grid.png") in
+  fs.exists("out/test_grid.png")
+}
+
+test "write_all_formats produces png" {
+  let paths = img.write_all_formats(colours, "out/test_all") in
+  fs.exists(paths.png)
+}
+
+test "write_all_formats produces jpg" {
+  let paths = img.write_all_formats(colours, "out/test_all") in
+  fs.exists(paths.jpg)
+}
+
+test "write_all_formats produces bmp" {
+  let paths = img.write_all_formats(colours, "out/test_all") in
+  fs.exists(paths.bmp)
+}
+
+test "write_all_formats produces tiff" {
+  let paths = img.write_all_formats(colours, "out/test_all") in
+  fs.exists(paths.tiff)
+}

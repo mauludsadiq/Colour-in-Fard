@@ -1,0 +1,109 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/fs") as fs
+import("std/png") as png
+import("std/bytes") as bytes
+import("std/process") as process
+
+// Build a flat RGB pixel list from a colour list (1 row, n pixels)
+fn colours_to_pixels(colours) {
+  list.flat_map(colours, fn(rgb) {
+    let r = cast.int(rgb.r * 255.0 + 0.5) in
+    let g = cast.int(rgb.g * 255.0 + 0.5) in
+    let b = cast.int(rgb.b * 255.0 + 0.5) in
+    [r, g, b]
+  })
+}
+
+// Write a PNG from a list of RGB colours as a 1-row strip
+fn write_png_strip(colours, path) {
+  let n = list.len(colours) in
+  let pixels = colours_to_pixels(colours) in
+  let raw = bytes.of_list(pixels) in
+  let bytes = png.encode_rgb(n, 1, raw) in
+  fs.write_bytes(path, bytes)
+}
+
+// Write a PNG from a list of RGB colours as a grid
+fn write_png_grid(colours, cols, cell_w, cell_h, path) {
+  let n = list.len(colours) in
+  let rows = (n + cols - 1) / cols in
+  let width = cols * cell_w in
+  let height = rows * cell_h in
+  let pixels = list.build(width * height * 3, fn(i) {
+    let pixel_idx = i / 3 in
+    let channel   = i % 3 in
+    let px = pixel_idx % width in
+    let py = pixel_idx / width in
+    let col = px / cell_w in
+    let row = py / cell_h in
+    let ci = row * cols + col in
+    let rgb = if ci < n then list.get(colours, ci) else { r: 0.0, g: 0.0, b: 0.0 } in
+    let r = cast.int(rgb.r * 255.0 + 0.5) in
+    let g = cast.int(rgb.g * 255.0 + 0.5) in
+    let b = cast.int(rgb.b * 255.0 + 0.5) in
+    if channel == 0 then r else if channel == 1 then g else b
+  }) in
+  let raw = bytes.of_list(pixels) in
+  let bytes = png.encode_rgb(width, height, raw) in
+  fs.write_bytes(path, bytes)
+}
+
+// Convert a PNG to another format using sips
+fn convert_via_sips(src_png, dst_path, fmt) {
+  let result = process.capture("sips", ["--setProperty", "format", fmt, src_png, "--out", dst_path]) in
+  result
+}
+
+// Write a colour strip in all formats
+fn write_all_formats(colours, base_path) {
+  let png_path  = str.concat([base_path, ".png"]) in
+  let jpg_path  = str.concat([base_path, ".jpg"]) in
+  let bmp_path  = str.concat([base_path, ".bmp"]) in
+  let tiff_path = str.concat([base_path, ".tiff"]) in
+  let heic_path = str.concat([base_path, ".heic"]) in
+
+  let _ = write_png_strip(colours, png_path) in
+  let _ = convert_via_sips(png_path, jpg_path,  "jpeg") in
+  let _ = convert_via_sips(png_path, bmp_path,  "bmp") in
+  let _ = convert_via_sips(png_path, tiff_path, "tiff") in
+  let _ = convert_via_sips(png_path, heic_path, "heic") in
+  {
+    png:  png_path,
+    jpg:  jpg_path,
+    bmp:  bmp_path,
+    tiff: tiff_path,
+    heic: heic_path
+  }
+}
+
+fn write_grid_all_formats(colours, cols, cell_w, cell_h, base_path) {
+  let png_path  = str.concat([base_path, ".png"]) in
+  let jpg_path  = str.concat([base_path, ".jpg"]) in
+  let bmp_path  = str.concat([base_path, ".bmp"]) in
+  let tiff_path = str.concat([base_path, ".tiff"]) in
+  let heic_path = str.concat([base_path, ".heic"]) in
+
+  let _ = write_png_grid(colours, cols, cell_w, cell_h, png_path) in
+  let _ = convert_via_sips(png_path, jpg_path,  "jpeg") in
+  let _ = convert_via_sips(png_path, bmp_path,  "bmp") in
+  let _ = convert_via_sips(png_path, tiff_path, "tiff") in
+  let _ = convert_via_sips(png_path, heic_path, "heic") in
+  {
+    png:  png_path,
+    jpg:  jpg_path,
+    bmp:  bmp_path,
+    tiff: tiff_path,
+    heic: heic_path
+  }
+}
+
+{
+  colours_to_pixels:     colours_to_pixels,
+  write_png_strip:       write_png_strip,
+  write_png_grid:        write_png_grid,
+  convert_via_sips:      convert_via_sips,
+  write_all_formats:     write_all_formats,
+  write_grid_all_formats: write_grid_all_formats
+}
