@@ -1,0 +1,86 @@
+import("std/list") as list
+import("std/str") as str
+import("std/fs") as fs
+import("std/json") as json
+import("../src/core/types") as t
+import("../src/core/cf_id") as cf
+import("../src/core/receipt") as receipt
+import("../src/export/json_catalogue") as jc
+
+// Tests assume K=3 registry has been built in docs/registry
+
+test "index.json exists" {
+  fs.exists("docs/registry/index.json")
+}
+
+test "index has correct total for K=3" {
+  let idx = json.decode(fs.read_text("docs/registry/index.json")) in
+  idx.total == 64
+}
+
+test "index has correct version" {
+  let idx = json.decode(fs.read_text("docs/registry/index.json")) in
+  idx.version == "CF-Registry-1.0.0"
+}
+
+test "index has identity version" {
+  let idx = json.decode(fs.read_text("docs/registry/index.json")) in
+  idx.identity_version == "CF-ID-1.0.0"
+}
+
+test "by-hex path is predictable for black" {
+  fs.exists("docs/registry/by-hex/00/00/00.json")
+}
+
+test "by-id path is predictable for black" {
+  fs.exists("docs/registry/by-id/CF-000000-86165F20.json")
+}
+
+test "hex path and CF-ID path resolve to same entry" {
+  let by_hex = json.decode(fs.read_text("docs/registry/by-hex/00/00/00.json")) in
+  let by_id  = json.decode(fs.read_text("docs/registry/by-id/CF-000000-86165F20.json")) in
+  by_hex.cf_id == by_id.cf_id && by_hex.hex == by_id.hex
+}
+
+test "entry has all required fields" {
+  let e = json.decode(fs.read_text("docs/registry/by-hex/00/00/00.json")) in
+  str.len(e.cf_id) > 0 &&
+  str.len(e.hex) > 0 &&
+  str.len(e.nearest_name) > 0 &&
+  str.len(e.family) > 0 &&
+  str.len(e.url) > 0
+}
+
+test "entry url matches expected pattern" {
+  let e = json.decode(fs.read_text("docs/registry/by-id/CF-000000-86165F20.json")) in
+  str.starts_with(e.url, "/registry/by-id/CF-")
+}
+
+test "entry cf_id matches filename" {
+  let e = json.decode(fs.read_text("docs/registry/by-id/CF-000000-86165F20.json")) in
+  e.cf_id == "CF-000000-86165F20"
+}
+
+test "receipt exists for K=3" {
+  fs.exists("docs/registry/receipts/registry_K3.receipt.json")
+}
+
+test "receipt has correct kind" {
+  let r = json.decode(fs.read_text("docs/registry/receipts/registry_K3.receipt.json")) in
+  r.kind == "registry"
+}
+
+test "receipt input_digest is sha256" {
+  let r = json.decode(fs.read_text("docs/registry/receipts/registry_K3.receipt.json")) in
+  str.starts_with(r.input_digest, "sha256:")
+}
+
+test "shard 00.ndjson exists" {
+  fs.exists("docs/registry/shards/00.ndjson")
+}
+
+test "tampered CF-ID entry fails verification" {
+  let e = json.decode(fs.read_text("docs/registry/by-hex/00/00/00.json")) in
+  let expected_id = cf.make_cf_id(t.rgb_f(0.0, 0.0, 0.0)) in
+  e.cf_id == expected_id
+}

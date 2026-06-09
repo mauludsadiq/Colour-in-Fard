@@ -1,0 +1,184 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/io") as io
+import("std/fs") as fs
+import("std/cli") as cli
+import("std/json") as json
+import("std/hash") as hash
+import("../src/core/types") as t
+import("../src/core/cube") as cube
+import("../src/core/cf_id") as cf
+import("../src/core/color_name") as cn
+import("../src/core/rgb_lab") as lab
+import("../src/core/rgb_hsv") as hsv
+import("../src/core/receipt") as receipt
+import("../src/export/json_catalogue") as jc
+
+let REGISTRY_VERSION = "CF-Registry-1.0.0"
+let BASE_URL = "/registry"
+
+fn hue_family(h, c) {
+  if c < 10.0 then "neutral"
+  else if h < 15.0 || h >= 345.0 then "red"
+  else if h < 45.0 then "orange"
+  else if h < 75.0 then "yellow"
+  else if h < 105.0 then "yellow-green"
+  else if h < 150.0 then "green"
+  else if h < 195.0 then "cyan"
+  else if h < 255.0 then "blue"
+  else if h < 285.0 then "violet"
+  else if h < 315.0 then "magenta"
+  else "red"
+}
+
+fn make_colour_entry(rgb) {
+  let l_val  = lab.rgb_to_lab(rgb) in
+  let lch    = lab.lab_to_lch(l_val) in
+  let cf_id  = cf.make_cf_id(rgb) in
+  let name   = cn.nearest_name(rgb) in
+  let family = hue_family(lch.h, lch.c) in
+  let hex    = jc.rgb_to_hex(rgb) in
+  let r255   = cast.int(rgb.r * 255.0 + 0.5) in
+  let g255   = cast.int(rgb.g * 255.0 + 0.5) in
+  let b255   = cast.int(rgb.b * 255.0 + 0.5) in
+  let hex6   = str.lower(str.slice(cf_id, 3, 9)) in
+  let h2     = str.slice(hex6, 0, 2) in
+  let h4     = str.slice(hex6, 2, 4) in
+  let h6     = str.slice(hex6, 4, 6) in
+  let url    = str.concat([BASE_URL, "/by-id/", cf_id, ".json"]) in
+  let entry  = {
+    cf_id:            cf_id,
+    url:              url,
+    hex:              hex,
+    rgb:              [r255, g255, b255],
+    lab:              [cf.round3(l_val.l), cf.round3(l_val.a), cf.round3(l_val.b)],
+    lch:              [cf.round3(lch.l), cf.round3(lch.c), cf.round3(lch.h)],
+    nearest_name:     name,
+    family:           family,
+    identity_version: cf.IDENTITY_VERSION,
+    naming_version:   receipt.NAMING_VERSION,
+    lab_version:      receipt.LAB_VERSION
+  } in
+  { entry: entry, hex6: hex6, h2: h2, h4: h4, h6: h6, cf_id: cf_id }
+}
+
+fn ensure_dir(path) {
+  fs.make_dir(path)
+}
+
+fn main() {
+  let args = cli.args() in
+  let k = if list.len(args) > 0 then cast.int(list.get(args, 0)) else 20 in
+  let n = k + 1 in
+  let total = n * n * n in
+
+  let _ = io.println(str.concat(["CF Registry v1.0 -- K=", str.from_int(k), " -- ", str.from_int(total), " colours"])) in
+
+  let _ = ensure_dir("docs/registry") in
+  let _ = ensure_dir("docs/registry/by-hex") in
+  let _ = ensure_dir("docs/registry/by-id") in
+  let _ = ensure_dir("docs/registry/shards") in
+  let _ = ensure_dir("docs/registry/receipts") in
+
+  let palette = cube.enumerate_cube_palette(k) in
+  let colours = list.map(palette, fn(c) { cube.color_i_to_rgb_f(c, k) }) in
+
+  let _ = io.println("building entries...") in
+
+  let chunk = 200 in
+  let chunks = total / chunk in
+  let shard_size = 256 in
+
+  // Write by-hex and by-id files in chunks, accumulate shard lines
+  let _ = list.fold(list.range(0, chunks), 0, fn(_, ci) {
+    let start = ci * chunk in
+    list.fold(list.range(0, chunk), 0, fn(_, j) {
+      let i = start + j in
+      let rgb = list.get(colours, i) in
+      let e = make_colour_entry(rgb) in
+      let entry_json = json.encode(e.entry) in
+
+      let hex_dir = str.concat(["docs/registry/by-hex/", e.h2, "/", e.h4]) in
+      let _ = ensure_dir(str.concat(["docs/registry/by-hex/", e.h2])) in
+      let _ = ensure_dir(hex_dir) in
+      let _ = fs.write_text(str.concat([hex_dir, "/", e.h6, ".json"]), entry_json) in
+      fs.write_text(str.concat(["docs/registry/by-id/", e.cf_id, ".json"]), entry_json)
+    })
+  }) in
+
+  let remainder = total % chunk in
+  let _ = if remainder > 0 then
+    let start = chunks * chunk in
+    list.fold(list.range(0, remainder), 0, fn(_, j) {
+      let i = start + j in
+      let rgb = list.get(colours, i) in
+      let e = make_colour_entry(rgb) in
+      let entry_json = json.encode(e.entry) in
+      let hex_dir = str.concat(["docs/registry/by-hex/", e.h2, "/", e.h4]) in
+      let _ = ensure_dir(str.concat(["docs/registry/by-hex/", e.h2])) in
+      let _ = ensure_dir(hex_dir) in
+      let _ = fs.write_text(str.concat([hex_dir, "/", e.h6, ".json"]), entry_json) in
+      fs.write_text(str.concat(["docs/registry/by-id/", e.cf_id, ".json"]), entry_json)
+    })
+  else null in
+
+  let _ = io.println("writing shards...") in
+
+  // Write hex-prefix shards (00-ff)
+  let shard_count = 256 in
+  let _ = list.fold(list.range(0, shard_count), 0, fn(_, si) {
+    let prefix = cf.byte_to_hex_upper(si) in
+    let prefix_lower = str.lower(prefix) in
+    let shard_colours = list.filter(colours, fn(rgb) {
+      let r255 = cast.int(rgb.r * 255.0 + 0.5) in
+      r255 == si
+    }) in
+    if list.len(shard_colours) > 0 then
+      let lines = list.map(shard_colours, fn(rgb) {
+        let e = make_colour_entry(rgb) in
+        json.encode(e.entry)
+      }) in
+      io.append_file(
+        str.concat(["docs/registry/shards/", prefix_lower, ".ndjson"]),
+        str.concat([str.join(lines, "\n"), "\n"])
+      )
+    else null
+  }) in
+
+  let _ = io.println("writing index...") in
+
+  let index = {
+    version:          REGISTRY_VERSION,
+    k:                k,
+    total:            total,
+    identity_version: cf.IDENTITY_VERSION,
+    naming_version:   receipt.NAMING_VERSION,
+    lab_version:      receipt.LAB_VERSION,
+    base_url:         BASE_URL,
+    paths: {
+      by_hex: str.concat([BASE_URL, "/by-hex/{h2}/{h4}/{h6}.json"]),
+      by_id:  str.concat([BASE_URL, "/by-id/{cf_id}.json"]),
+      shards: str.concat([BASE_URL, "/shards/{h2}.ndjson"])
+    }
+  } in
+  let index_json = json.encode(index) in
+  let _ = fs.write_text("docs/registry/index.json", index_json) in
+
+  let r = receipt.make_receipt(
+    "registry",
+    { k: k, total: total, registry_version: REGISTRY_VERSION },
+    { identity_version: cf.IDENTITY_VERSION, naming_version: receipt.NAMING_VERSION, lab_version: receipt.LAB_VERSION },
+    index_json
+  ) in
+  let receipt_path = str.concat(["docs/registry/receipts/registry_K", str.from_int(k), ".receipt.json"]) in
+  let _ = receipt.write_receipt(r, receipt_path) in
+
+  let _ = io.println(str.concat(["wrote docs/registry/index.json"])) in
+  let _ = io.println(str.concat(["wrote docs/registry/by-hex/ (", str.from_int(total), " files)"])) in
+  let _ = io.println(str.concat(["wrote docs/registry/by-id/ (", str.from_int(total), " files)"])) in
+  let _ = io.println(str.concat(["wrote docs/registry/receipts/registry_K", str.from_int(k), ".receipt.json"])) in
+  io.println("done")
+}
+
+main()

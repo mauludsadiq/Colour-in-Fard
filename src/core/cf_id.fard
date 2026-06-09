@@ -79,5 +79,6 @@ fn make_entry(rgb) {
   make_entry:       make_entry,
   rgb_to_hex6:      rgb_to_hex6,
   lab_hash8:        lab_hash8,
-  round3:           round3
+  round3:           round3,
+  byte_to_hex_upper: byte_to_hex_upper
 }

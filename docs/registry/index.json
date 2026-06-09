@@ -1,0 +1,1 @@
+{"base_url":"/registry","identity_version":"CF-ID-1.0.0","k":20,"lab_version":"1.0.0","naming_version":"1.0.0","paths":{"by_hex":"/registry/by-hex/{h2}/{h4}/{h6}.json","by_id":"/registry/by-id/{cf_id}.json","shards":"/registry/shards/{h2}.ndjson"},"total":9261,"version":"CF-Registry-1.0.0"}
