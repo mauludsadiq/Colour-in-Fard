@@ -1,0 +1,63 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/io") as io
+import("std/cli") as cli
+import("std/json") as json
+import("std/fs") as fs
+import("std/hash") as hash
+import("../src/core/naming") as naming
+import("../src/core/cf_id") as cf
+
+fn ff3(f) { str.from_float(cast.float(cast.int(f * 1000.0 + 0.5)) / 1000.0) }
+
+fn main() {
+  let args = cli.args() in
+  if list.len(args) == 0 then
+    let _ = io.println("usage: naming <hex> [naming-db-path]") in
+    let _ = io.println(str.concat(["       (default naming db: ", naming.DEFAULT_NAMING_DB, ")"])) in
+    io.println("       echo \"#cc0000\" | naming")
+  else
+    let hex_in = list.get(args, 0) in
+    let db_path = if list.len(args) > 1 then list.get(args, 1) else naming.DEFAULT_NAMING_DB in
+
+    let db = naming.load_naming_db(db_path) in
+    let rgb = naming.hex_to_rgb(hex_in) in
+
+    let result_76   = naming.nearest_name_with_dist(db, rgb) in
+    let result_2000 = naming.nearest_name_with_dist_de2000(db, rgb) in
+
+    let cf_id = cf.make_cf_id(rgb) in
+
+    let _ = io.println("") in
+    let _ = io.println(str.concat(["input:        ", str.lower(hex_in)])) in
+    let _ = io.println(str.concat(["cf_id:        ", cf_id])) in
+    let _ = io.println("") in
+    let _ = io.println(str.concat(["naming_db:    ", db.path])) in
+    let _ = io.println(str.concat(["db_version:   ", db.version_hash])) in
+    let _ = io.println(str.concat(["entries:      ", str.from_int(db.count)])) in
+    let _ = io.println("") in
+    let _ = io.println(str.concat(["nearest (CIE76):    ", result_76.name,   "  (dist=", ff3(result_76.dist),   ", ", result_76.hex,   ")"])) in
+    let _ = io.println(str.concat(["nearest (CIEDE2000): ", result_2000.name, "  (dist=", ff3(result_2000.dist), ", ", result_2000.hex, ")"])) in
+
+    // Receipt -- binds naming db version
+    let _ = fs.make_dir("out") in
+    let receipt = {
+      kind: "naming",
+      inputs: { hex: str.lower(hex_in), naming_db_path: db.path },
+      outputs: {
+        cf_id: cf_id,
+        nearest_name_cie76: result_76.name,
+        nearest_name_de2000: result_2000.name
+      },
+      naming_db_version: db.version_hash,
+      naming_db_entries: db.count,
+      input_digest:  hash.sha256_text(json.encode({ hex: str.lower(hex_in), naming_db: db.version_hash })),
+      output_digest: hash.sha256_text(result_2000.name),
+      identity_version: cf.IDENTITY_VERSION
+    } in
+    let _ = fs.write_text("out/naming.receipt.json", json.encode(receipt)) in
+    io.println("\nreceipt: out/naming.receipt.json")
+}
+
+main()

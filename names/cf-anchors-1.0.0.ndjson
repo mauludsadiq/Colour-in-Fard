@@ -1,0 +1,112 @@
+{"hex":"#000000","name":"black"}
+{"hex":"#ffffff","name":"white"}
+{"hex":"#ff0000","name":"red"}
+{"hex":"#008000","name":"green"}
+{"hex":"#00ff00","name":"lime"}
+{"hex":"#0000ff","name":"blue"}
+{"hex":"#ffff00","name":"yellow"}
+{"hex":"#00ffff","name":"cyan"}
+{"hex":"#ff00ff","name":"magenta"}
+{"hex":"#ffa500","name":"orange"}
+{"hex":"#ff8000","name":"orange"}
+{"hex":"#ffc0cb","name":"pink"}
+{"hex":"#800080","name":"purple"}
+{"hex":"#a52a2a","name":"brown"}
+{"hex":"#808080","name":"grey"}
+{"hex":"#c0c0c0","name":"silver"}
+{"hex":"#ffd700","name":"gold"}
+{"hex":"#f5f5dc","name":"beige"}
+{"hex":"#fffff0","name":"ivory"}
+{"hex":"#fffdd0","name":"cream"}
+{"hex":"#e6e6fa","name":"lavender"}
+{"hex":"#ee82ee","name":"violet"}
+{"hex":"#4b0082","name":"indigo"}
+{"hex":"#008080","name":"teal"}
+{"hex":"#000080","name":"navy"}
+{"hex":"#800000","name":"maroon"}
+{"hex":"#808000","name":"olive"}
+{"hex":"#ff7f50","name":"coral"}
+{"hex":"#fa8072","name":"salmon"}
+{"hex":"#dc143c","name":"crimson"}
+{"hex":"#b22222","name":"crimson"}
+{"hex":"#ff2300","name":"scarlet"}
+{"hex":"#e0115f","name":"ruby"}
+{"hex":"#ff0080","name":"rose"}
+{"hex":"#ff69b4","name":"hotpink"}
+{"hex":"#ff00ff","name":"fuchsia"}
+{"hex":"#dda0dd","name":"plum"}
+{"hex":"#da70d6","name":"orchid"}
+{"hex":"#c8a2c8","name":"lilac"}
+{"hex":"#ccccff","name":"periwinkle"}
+{"hex":"#0047ab","name":"cobalt"}
+{"hex":"#0f52ba","name":"sapphire"}
+{"hex":"#007ba7","name":"cerulean"}
+{"hex":"#87ceeb","name":"sky blue"}
+{"hex":"#00ffff","name":"aqua"}
+{"hex":"#40e0d0","name":"turquoise"}
+{"hex":"#98ff98","name":"mint"}
+{"hex":"#50c878","name":"emerald"}
+{"hex":"#228b22","name":"forest green"}
+{"hex":"#adbc8f","name":"sage"}
+{"hex":"#7fff00","name":"chartreuse"}
+{"hex":"#9acd32","name":"yellow green"}
+{"hex":"#f0e68c","name":"khaki"}
+{"hex":"#cd853f","name":"tan"}
+{"hex":"#c2b280","name":"sand"}
+{"hex":"#cc8033","name":"caramel"}
+{"hex":"#d2691e","name":"chocolate"}
+{"hex":"#a0522d","name":"sienna"}
+{"hex":"#c04000","name":"mahogany"}
+{"hex":"#b7410e","name":"rust"}
+{"hex":"#e2725b","name":"terracotta"}
+{"hex":"#ffdab9","name":"peach"}
+{"hex":"#fbceb1","name":"apricot"}
+{"hex":"#ffbf00","name":"amber"}
+{"hex":"#ffdb57","name":"mustard"}
+{"hex":"#fff700","name":"lemon"}
+{"hex":"#32cd32","name":"lime green"}
+{"hex":"#00a86b","name":"jade"}
+{"hex":"#2b6d45","name":"pine"}
+{"hex":"#365e3b","name":"hunter green"}
+{"hex":"#191970","name":"midnight blue"}
+{"hex":"#36454f","name":"charcoal"}
+{"hex":"#708090","name":"slate"}
+{"hex":"#4682b4","name":"steel blue"}
+{"hex":"#b0e0e6","name":"powder blue"}
+{"hex":"#def2fa","name":"ice blue"}
+{"hex":"#e3dac9","name":"bone"}
+{"hex":"#faf0e6","name":"linen"}
+{"hex":"#fffafa","name":"snow"}
+{"hex":"#b2beb5","name":"ash"}
+{"hex":"#8f7b6b","name":"taupe"}
+{"hex":"#e0b0cf","name":"mauve"}
+{"hex":"#73152a","name":"wine"}
+{"hex":"#800020","name":"burgundy"}
+{"hex":"#660011","name":"oxblood"}
+{"hex":"#b87333","name":"copper"}
+{"hex":"#cd7f32","name":"bronze"}
+{"hex":"#f7e8c2","name":"champagne"}
+{"hex":"#c2b28f","name":"ecru"}
+{"hex":"#f0dc82","name":"buff"}
+{"hex":"#39ff14","name":"electric green"}
+{"hex":"#ff6ec7","name":"neon pink"}
+{"hex":"#ff073a","name":"neon red"}
+{"hex":"#ccff00","name":"electric lime"}
+{"hex":"#1e90ff","name":"electric blue"}
+{"hex":"#b2ff59","name":"neon yellow"}
+{"hex":"#ff9f00","name":"neon orange"}
+{"hex":"#00ffff","name":"electric cyan"}
+{"hex":"#b222ff","name":"neon purple"}
+{"hex":"#ffff00","name":"electric yellow"}
+{"hex":"#f5f5f5","name":"near white"}
+{"hex":"#eeeeee","name":"off white"}
+{"hex":"#e0e0e0","name":"light gray"}
+{"hex":"#d3d3d3","name":"light grey"}
+{"hex":"#a9a9a9","name":"mid gray"}
+{"hex":"#999999","name":"mid grey"}
+{"hex":"#696969","name":"dark gray"}
+{"hex":"#545454","name":"dark grey"}
+{"hex":"#1a1a1a","name":"near black"}
+{"hex":"#101010","name":"off black"}
+{"hex":"#2c2c2e","name":"charcoal"}
+{"hex":"#3a3a3c","name":"charcoal"}

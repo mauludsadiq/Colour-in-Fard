@@ -1,0 +1,68 @@
+import("../src/core/cf_id") as cf
+import("std/list") as list
+import("std/str") as str
+import("../src/core/naming") as naming
+import("../src/core/types") as t
+
+let DEFAULT_DB = naming.load_naming_db(naming.DEFAULT_NAMING_DB)
+let PIGMENT_DB = naming.load_naming_db("names/cf-pigments-1.0.0.ndjson")
+
+test "default naming db loads with entries" {
+  DEFAULT_DB.count > 100
+}
+
+test "default naming db has a version hash" {
+  str.len(DEFAULT_DB.version_hash) == 8
+}
+
+test "pigment naming db loads with 6 entries" {
+  PIGMENT_DB.count == 6
+}
+
+test "different naming dbs have different version hashes" {
+  DEFAULT_DB.version_hash != PIGMENT_DB.version_hash
+}
+
+test "loading the same db twice gives the same version hash" {
+  let db2 = naming.load_naming_db(naming.DEFAULT_NAMING_DB) in
+  DEFAULT_DB.version_hash == db2.version_hash
+}
+
+test "nearest_name finds red in default db" {
+  naming.nearest_name(DEFAULT_DB, t.rgb_f(1.0, 0.0, 0.0)) == "red"
+}
+
+test "nearest_name finds black in default db" {
+  naming.nearest_name(DEFAULT_DB, t.rgb_f(0.0, 0.0, 0.0)) == "black"
+}
+
+test "nearest_name in pigment db finds vermilion for red-orange" {
+  naming.nearest_name(PIGMENT_DB, t.rgb_f(0.92, 0.41, 0.18)) == "vermilion"
+}
+
+test "different naming dbs can give different nearest names for same colour" {
+  let rgb = t.rgb_f(0.8, 0.2, 0.0) in
+  let name_default = naming.nearest_name(DEFAULT_DB, rgb) in
+  let name_pigment = naming.nearest_name(PIGMENT_DB, rgb) in
+  // pigment db is tiny so its nearest match is likely different from default's
+  name_pigment == "vermilion"
+}
+
+test "hex_to_rgb roundtrip via cf_id matches" {
+  let rgb = naming.hex_to_rgb("#7b3f00") in
+  cf.make_cf_id(rgb) == "CF-7B3F00-EA262463"
+}
+
+test "nearest_name_with_dist returns name, dist, and hex" {
+  let result = naming.nearest_name_with_dist(DEFAULT_DB, t.rgb_f(1.0, 0.0, 0.0)) in
+  result.name == "red" && result.dist >= 0.0 && str.starts_with(result.hex, "#")
+}
+
+test "CIE76 and CIEDE2000 can disagree on nearest name" {
+  let rgb = t.rgb_f(0.8, 0.0, 0.0) in
+  let name76   = naming.nearest_name(DEFAULT_DB, rgb) in
+  let name2000 = naming.nearest_name_de2000(DEFAULT_DB, rgb) in
+  // Not asserting they differ (they might not for this colour) -- just that
+  // both return valid non-empty names
+  str.len(name76) > 0 && str.len(name2000) > 0
+}

@@ -1,0 +1,114 @@
+import("std/list") as list
+import("std/str") as str
+import("std/json") as json
+import("std/fs") as fs
+import("std/hash") as hash
+import("std/cast") as cast
+import("../core/types") as t
+import("../core/rgb_lab") as lab
+import("../core/delta_e2000") as de2000
+
+// CF Community Naming Layer v1.0.0
+//
+// A naming database is an NDJSON file: one {"name":..., "hex":...} object
+// per line. Anyone can publish a naming database. The receipt system binds
+// the database's content hash, so any output that used a particular naming
+// database can be verified against that exact database.
+//
+// The default database, names/cf-anchors-1.0.0.ndjson, is the original
+// 109-entry CF anchor set (CSS named colours, neons, gray ladder, violet
+// darks) as of CF Naming v1.0.0.
+
+let DEFAULT_NAMING_DB = "names/cf-anchors-1.0.0.ndjson"
+
+fn hex_digit_val(c) {
+  if c == "0" then 0 else if c == "1" then 1 else if c == "2" then 2
+  else if c == "3" then 3 else if c == "4" then 4 else if c == "5" then 5
+  else if c == "6" then 6 else if c == "7" then 7 else if c == "8" then 8
+  else if c == "9" then 9
+  else if c == "a" || c == "A" then 10
+  else if c == "b" || c == "B" then 11
+  else if c == "c" || c == "C" then 12
+  else if c == "d" || c == "D" then 13
+  else if c == "e" || c == "E" then 14
+  else 15
+}
+
+fn hex2_to_int(s) {
+  hex_digit_val(str.slice(s, 0, 1)) * 16 + hex_digit_val(str.slice(s, 1, 2))
+}
+
+fn hex_to_rgb(hex_str) {
+  let h = if str.starts_with(hex_str, "#") then str.slice(hex_str, 1, str.len(hex_str)) else hex_str in
+  {
+    r: cast.float(hex2_to_int(str.slice(h, 0, 2))) / 255.0,
+    g: cast.float(hex2_to_int(str.slice(h, 2, 4))) / 255.0,
+    b: cast.float(hex2_to_int(str.slice(h, 4, 6))) / 255.0
+  }
+}
+
+// Load a naming database from an NDJSON file.
+// Returns { path, version_hash, entries: [{name, hex, rgb, lab}] }
+fn load_naming_db(path) {
+  let content = fs.read_text(path) in
+  let lines = list.filter(str.split(content, "\n"), fn(line) { str.len(line) > 0 }) in
+  let entries = list.map(lines, fn(line) {
+    let obj = json.decode(line) in
+    let rgb = hex_to_rgb(obj.hex) in
+    { name: obj.name, hex: obj.hex, rgb: rgb, lab: lab.rgb_to_lab(rgb) }
+  }) in
+  let digest = hash.sha256_text(content) in
+  let version_hash = str.upper(str.slice(digest, 7, 15)) in
+  {
+    path: path,
+    version_hash: version_hash,
+    count: list.len(entries),
+    entries: entries
+  }
+}
+
+// Find nearest named entry in a loaded naming database (CIE76 delta-E)
+fn nearest_name(db, rgb) {
+  let target_lab = lab.rgb_to_lab(rgb) in
+  let result = list.fold(db.entries, { name: "unknown", dist: 1000000.0 }, fn(acc, entry) {
+    let d = lab.delta_e(target_lab, entry.lab) in
+    if d < acc.dist then { name: entry.name, dist: d } else acc
+  }) in
+  result.name
+}
+
+fn nearest_name_with_dist(db, rgb) {
+  let target_lab = lab.rgb_to_lab(rgb) in
+  list.fold(db.entries, { name: "unknown", dist: 1000000.0, hex: "" }, fn(acc, entry) {
+    let d = lab.delta_e(target_lab, entry.lab) in
+    if d < acc.dist then { name: entry.name, dist: d, hex: entry.hex } else acc
+  })
+}
+
+// Find nearest named entry using CIEDE2000 (more perceptually accurate)
+fn nearest_name_de2000(db, rgb) {
+  let target_lab = lab.rgb_to_lab(rgb) in
+  let result = list.fold(db.entries, { name: "unknown", dist: 1000000.0 }, fn(acc, entry) {
+    let d = de2000.delta_e2000(target_lab, entry.lab) in
+    if d < acc.dist then { name: entry.name, dist: d } else acc
+  }) in
+  result.name
+}
+
+fn nearest_name_with_dist_de2000(db, rgb) {
+  let target_lab = lab.rgb_to_lab(rgb) in
+  list.fold(db.entries, { name: "unknown", dist: 1000000.0, hex: "" }, fn(acc, entry) {
+    let d = de2000.delta_e2000(target_lab, entry.lab) in
+    if d < acc.dist then { name: entry.name, dist: d, hex: entry.hex } else acc
+  })
+}
+
+{
+  DEFAULT_NAMING_DB:           DEFAULT_NAMING_DB,
+  load_naming_db:              load_naming_db,
+  nearest_name:                nearest_name,
+  nearest_name_with_dist:      nearest_name_with_dist,
+  nearest_name_de2000:         nearest_name_de2000,
+  nearest_name_with_dist_de2000: nearest_name_with_dist_de2000,
+  hex_to_rgb:                  hex_to_rgb
+}
