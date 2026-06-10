@@ -8,6 +8,8 @@ Image-to-palette extraction. Multi-format exports. Written entirely in FARD.
 No FFI. No native dependencies. No external libraries.
 
 **5,395 lines of FARD. 202 tests, 26 suites, 0 failures.**
+**Plus: Python reference implementation (cfid_py), 28/28 tests passing.**
+**CF Protocol Specification v1.0.0 published — CF-ID is language-independent.**
 
 ---
 
