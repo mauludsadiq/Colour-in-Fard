@@ -1,0 +1,125 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/io") as io
+import("std/cli") as cli
+import("std/json") as json
+import("std/fs") as fs
+import("std/hash") as hash
+import("../src/core/icc_read") as icc
+import("../src/core/rgb_cmyk") as cmyk
+import("../src/core/cf_id") as cf
+
+// CF ICC-Calibrated CMYK
+//
+// Standard CMYK (apps/cmyk.fard) assumes the input RGB is sRGB-encoded and
+// applies the standard sRGB gamma curve before computing CMY+K via GCR.
+//
+// This app instead linearises the input RGB using the TRC curves from a
+// real ICC RGB profile (e.g. a monitor's profile, Display P3, Adobe RGB).
+// This means the CMYK breakdown reflects the actual tone response of the
+// source device, not an assumed sRGB curve -- "input-side calibration."
+//
+// NOTE: this is NOT full output-profile CMYK separation (which requires
+// LUT-based mAB/mBA tags found in real CMYK output ICC profiles -- a
+// significantly larger parsing job, noted as future work). The CMYK here
+// still uses the GCR model from rgb_cmyk.fard; what changes is the
+// linearisation step, which now uses the *source* profile's measured TRC
+// instead of an assumed sRGB curve.
+
+fn ff3(f) { str.from_float(cast.float(cast.int(f * 1000.0 + 0.5)) / 1000.0) }
+fn pct(f) { str.from_int(cast.int(f * 100.0 + 0.5)) }
+
+fn hex_digit_val(c) {
+  if c == "0" then 0 else if c == "1" then 1 else if c == "2" then 2
+  else if c == "3" then 3 else if c == "4" then 4 else if c == "5" then 5
+  else if c == "6" then 6 else if c == "7" then 7 else if c == "8" then 8
+  else if c == "9" then 9
+  else if c == "a" || c == "A" then 10
+  else if c == "b" || c == "B" then 11
+  else if c == "c" || c == "C" then 12
+  else if c == "d" || c == "D" then 13
+  else if c == "e" || c == "E" then 14
+  else 15
+}
+
+fn hex2_to_int(s) {
+  hex_digit_val(str.slice(s, 0, 1)) * 16 + hex_digit_val(str.slice(s, 1, 2))
+}
+
+fn hex_to_rgb(hex_str) {
+  let h = if str.starts_with(hex_str, "#") then str.slice(hex_str, 1, str.len(hex_str)) else hex_str in
+  {
+    r: cast.float(hex2_to_int(str.slice(h, 0, 2))) / 255.0,
+    g: cast.float(hex2_to_int(str.slice(h, 2, 4))) / 255.0,
+    b: cast.float(hex2_to_int(str.slice(h, 4, 6))) / 255.0
+  }
+}
+
+fn main() {
+  let args = cli.args() in
+  if list.len(args) < 2 then
+    let _ = io.println("usage: icc_cmyk <hex> <profile.icc> [k-factor]") in
+    io.println("       k-factor in [0,1], default 1.0 (full GCR)")
+  else
+    let hex_in    = list.get(args, 0) in
+    let profile_path = list.get(args, 1) in
+    let k_factor  = if list.len(args) > 2 then cast.float(list.get(args, 2)) else 1.0 in
+
+    let profile = icc.read_profile(profile_path) in
+    if !profile.ok then
+      io.println(str.concat(["error: ", profile.error]))
+    else
+      let rgb = hex_to_rgb(hex_in) in
+
+      // Linearise via the PROFILE's own TRC curves (not assumed sRGB)
+      let rl = icc.apply_curv(profile.r_trc, rgb.r) in
+      let gl = icc.apply_curv(profile.g_trc, rgb.g) in
+      let bl = icc.apply_curv(profile.b_trc, rgb.b) in
+
+      let result = cmyk.cmyk_from_linear(rl, gl, bl, k_factor) in
+      let pcts = cmyk.cmyk_to_percent(result) in
+      let tac = cmyk.total_ink_coverage(result) in
+
+      // For comparison: standard sRGB-assumed CMYK
+      let standard = cmyk.rgb_to_cmyk(rgb, k_factor) in
+      let standard_pcts = cmyk.cmyk_to_percent(standard) in
+
+      let cf_id = cf.make_cf_id(rgb) in
+
+      let _ = io.println("") in
+      let _ = io.println(str.concat(["input:        ", str.lower(hex_in), "  ", cf_id])) in
+      let _ = io.println(str.concat(["icc profile:  ", profile_path])) in
+      let _ = io.println(str.concat(["  device class: ", profile.header.device_class])) in
+      let _ = io.println(str.concat(["  TRC kind (R): ", profile.r_trc.kind])) in
+      let _ = io.println("") in
+      let _ = io.println(str.concat(["linearised RGB (via profile TRC): r=", ff3(rl), " g=", ff3(gl), " b=", ff3(bl)])) in
+      let _ = io.println("") in
+      let _ = io.println(str.concat(["ICC-calibrated CMYK: C=", str.from_int(pcts.c), "% M=", str.from_int(pcts.m), "% Y=", str.from_int(pcts.y), "% K=", str.from_int(pcts.k), "%"])) in
+      let _ = io.println(str.concat(["standard sRGB CMYK:  C=", str.from_int(standard_pcts.c), "% M=", str.from_int(standard_pcts.m), "% Y=", str.from_int(standard_pcts.y), "% K=", str.from_int(standard_pcts.k), "%"])) in
+      let _ = io.println("") in
+      let _ = io.println(str.concat(["total ink coverage: ", str.from_int(cast.int(tac + 0.5)), "%"])) in
+      let _ = if tac > 280 then io.println("warning: TAC exceeds common press limit (280%)") else 0 in
+
+      // Receipt
+      let _ = fs.make_dir("out") in
+      let receipt = {
+        kind: "icc_cmyk",
+        inputs: { hex: str.lower(hex_in), icc_profile: profile_path, k_factor: k_factor },
+        outputs: {
+          cf_id: cf_id,
+          cmyk_calibrated_pct: pcts,
+          cmyk_standard_pct: standard_pcts,
+          total_ink_coverage_pct: tac,
+          linearised_rgb: { r: rl, g: gl, b: bl }
+        },
+        input_digest:  hash.sha256_text(json.encode({ hex: str.lower(hex_in), icc_profile: profile_path, k_factor: k_factor })),
+        output_digest: hash.sha256_text(json.encode(pcts)),
+        identity_version: cf.IDENTITY_VERSION,
+        note: "Input-side ICC calibration: linearisation uses the profile's TRC; CMYK separation itself uses the GCR model from rgb_cmyk.fard, not a full LUT-based output profile."
+      } in
+      let _ = fs.write_text("out/icc_cmyk.receipt.json", json.encode(receipt)) in
+      io.println("\nreceipt: out/icc_cmyk.receipt.json")
+}
+
+main()

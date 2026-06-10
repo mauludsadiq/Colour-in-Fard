@@ -20,11 +20,35 @@ fn rgb_to_cmy(rgb) {
   let r = srgb_to_linear(rgb.r) in
   let g = srgb_to_linear(rgb.g) in
   let b = srgb_to_linear(rgb.b) in
+  cmy_from_linear(r, g, b)
+}
+
+// CMY directly from already-linearised RGB (e.g. via an ICC profile's
+// own TRC curves, instead of the assumed sRGB gamma). All values in [0,1].
+fn cmy_from_linear(rl, gl, bl) {
   {
-    c: 1.0 - r,
-    m: 1.0 - g,
-    y: 1.0 - b
+    c: 1.0 - rl,
+    m: 1.0 - gl,
+    y: 1.0 - bl
   }
+}
+
+// CMYK directly from already-linearised RGB. Same GCR model as
+// rgb_to_cmyk, but skips the sRGB linearisation step.
+fn cmyk_from_linear(rl, gl, bl, k_factor) {
+  let cmy = cmy_from_linear(rl, gl, bl) in
+  let k_raw = m.minf(cmy.c, m.minf(cmy.m, cmy.y)) in
+  let k = k_raw * m.clampf(k_factor, 0.0, 1.0) in
+  let denom = 1.0 - k in
+  if denom < 0.0001 then
+    { c: 0.0, m: 0.0, y: 0.0, k: 1.0 }
+  else
+    {
+      c: (cmy.c - k) / denom,
+      m: (cmy.m - k) / denom,
+      y: (cmy.y - k) / denom,
+      k: k
+    }
 }
 
 // Full GCR black generation
@@ -87,6 +111,8 @@ fn total_ink_coverage(cmyk) {
   rgb_to_cmy:           rgb_to_cmy,
   rgb_to_cmyk:          rgb_to_cmyk,
   rgb_to_cmyk_standard: rgb_to_cmyk_standard,
+  cmy_from_linear:      cmy_from_linear,
+  cmyk_from_linear:     cmyk_from_linear,
   cmyk_to_rgb:          cmyk_to_rgb,
   cmyk_to_percent:      cmyk_to_percent,
   total_ink_coverage:   total_ink_coverage

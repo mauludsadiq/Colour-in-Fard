@@ -1,0 +1,84 @@
+import("std/list") as list
+import("../src/core/icc_read") as icc
+import("../src/core/rgb_cmyk") as cmyk
+import("../src/core/math") as m
+
+let SRGB_PATH = "/System/Library/ColorSync/Profiles/sRGB Profile.icc"
+let DISPLAY_P3_PATH = "/System/Library/ColorSync/Profiles/Display P3.icc"
+
+test "cmy_from_linear of (1,1,1) is (0,0,0)" {
+  let cmy = cmyk.cmy_from_linear(1.0, 1.0, 1.0) in
+  cmy.c == 0.0 && cmy.m == 0.0 && cmy.y == 0.0
+}
+
+test "cmy_from_linear of (0,0,0) is (1,1,1)" {
+  let cmy = cmyk.cmy_from_linear(0.0, 0.0, 0.0) in
+  cmy.c == 1.0 && cmy.m == 1.0 && cmy.y == 1.0
+}
+
+test "cmyk_from_linear black is K=1" {
+  let result = cmyk.cmyk_from_linear(0.0, 0.0, 0.0, 1.0) in
+  result.k == 1.0 && result.c == 0.0 && result.m == 0.0 && result.y == 0.0
+}
+
+test "cmyk_from_linear white is all zero" {
+  let result = cmyk.cmyk_from_linear(1.0, 1.0, 1.0, 1.0) in
+  result.c == 0.0 && result.m == 0.0 && result.y == 0.0 && result.k == 0.0
+}
+
+test "sRGB profile TRC linearises (1,1,1) to near 1.0" {
+  let p = icc.read_profile(SRGB_PATH) in
+  let rl = icc.apply_curv(p.r_trc, 1.0) in
+  m.absf(rl - 1.0) < 0.01
+}
+
+test "sRGB profile TRC linearises (0,0,0) to 0.0" {
+  let p = icc.read_profile(SRGB_PATH) in
+  let rl = icc.apply_curv(p.r_trc, 0.0) in
+  rl < 0.001
+}
+
+test "Display P3 TRC linearises (1,1,1) to near 1.0" {
+  let p = icc.read_profile(DISPLAY_P3_PATH) in
+  let rl = icc.apply_curv(p.r_trc, 1.0) in
+  m.absf(rl - 1.0) < 0.01
+}
+
+test "ICC-calibrated CMYK for white is all zero (sRGB profile)" {
+  let p = icc.read_profile(SRGB_PATH) in
+  let rl = icc.apply_curv(p.r_trc, 1.0) in
+  let gl = icc.apply_curv(p.g_trc, 1.0) in
+  let bl = icc.apply_curv(p.b_trc, 1.0) in
+  let result = cmyk.cmyk_from_linear(rl, gl, bl, 1.0) in
+  result.c < 0.01 && result.m < 0.01 && result.y < 0.01 && result.k < 0.01
+}
+
+test "ICC-calibrated CMYK for black is K near 1 (sRGB profile)" {
+  let p = icc.read_profile(SRGB_PATH) in
+  let rl = icc.apply_curv(p.r_trc, 0.0) in
+  let gl = icc.apply_curv(p.g_trc, 0.0) in
+  let bl = icc.apply_curv(p.b_trc, 0.0) in
+  let result = cmyk.cmyk_from_linear(rl, gl, bl, 1.0) in
+  result.k > 0.99
+}
+
+test "Display P3 vs sRGB profile produce different CMYK for mid-tone" {
+  let srgb = icc.read_profile(SRGB_PATH) in
+  let p3   = icc.read_profile(DISPLAY_P3_PATH) in
+  let v = 0.5 in
+
+  let srgb_rl = icc.apply_curv(srgb.r_trc, v) in
+  let p3_rl   = icc.apply_curv(p3.r_trc, v) in
+
+  let srgb_cmyk = cmyk.cmyk_from_linear(srgb_rl, srgb_rl, srgb_rl, 1.0) in
+  let p3_cmyk   = cmyk.cmyk_from_linear(p3_rl, p3_rl, p3_rl, 1.0) in
+
+  // Different TRCs should produce different K values for the same input
+  m.absf(srgb_cmyk.k - p3_cmyk.k) > 0.001
+}
+
+test "total_ink_coverage of pure black with k_factor 1 is 100" {
+  let result = cmyk.cmyk_from_linear(0.0, 0.0, 0.0, 1.0) in
+  let tac = cmyk.total_ink_coverage(result) in
+  m.absf(tac - 100.0) < 0.01
+}
