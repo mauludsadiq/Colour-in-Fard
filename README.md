@@ -7,7 +7,7 @@ Full 24-bit RGB universe. CIELAB, CIELCH, CIEDE2000, OKLab, OKLCH, CMYK.
 Image-to-palette extraction. Multi-format exports. Written entirely in FARD.
 No FFI. No native dependencies. No external libraries.
 
-**5,395 lines of FARD. 202 tests, 26 suites, 0 failures.**
+**5,985 lines of FARD. 220 tests, 27 suites, 0 failures.**
 **Plus: Python reference implementation (cfid_py), 28/28 tests passing.**
 **CF Protocol Specification v1.0.0 published — CF-ID is language-independent.**
 
@@ -155,6 +155,7 @@ Cite receipts for public claims, not fard_run_digest.
 - OKLab roundtrips verified for all primaries
 - CMYK roundtrip verified for primary and neutral colours
 - Native BMP reader verified against sips-generated files
+- ICC parser verified against real macOS sRGB and Display P3 profiles (header, tag table, XYZ matrix, TRC curves, profile-to-profile roundtrips)
 
 ---
 
@@ -183,6 +184,8 @@ MacBook Pro, FARD v1.7.1 interpreter.
 | `apps/simulate.fard <hex>` | Colour blindness simulation: 7 types, SVG/PNG export |
 | `apps/gradient.fard <hex1> <hex2> [n]` | LAB, LCH, RGB gradient — demonstrates why LAB matters |
 | `apps/cmyk.fard <hex>` | Device-independent CMYK with GCR, TAC, print warnings |
+| `apps/icc_info.fard <profile.icc>` | Dump ICC profile: header, tags, matrix, TRC curves |
+| `apps/icc_convert.fard <hex> <src.icc> <dst.icc>` | Convert colour between ICC profiles via XYZ PCS, with CF IDs and receipt |
 | `apps/palette.fard <image> [k]` | Extract k dominant colours from any image via k-means in LAB |
 | `apps/build_registry.fard [k]` | Generate CF registry: by-hex, by-id, shards, receipts |
 | `apps/build_search_index.fard [k]` | Generate registry search index |
@@ -273,12 +276,12 @@ MacBook Pro, FARD v1.7.1 interpreter.
    v1.8.0   Complete -- CF Registry K=100 (1,030,301 colours)
    v1.9.0   Complete -- CMYK conversion
    v1.10.0  Complete -- Image→Palette (native BMP reader, k-means LAB)
-   v1.11.0  Planned  -- CF Protocol Specification v1.0 (SPEC.md)
-   v2.0.0   Planned  -- Python/JS reference implementation (pip install cfid)
+    v1.11.0  Complete -- CF Protocol Specification v1.0 (SPEC.md)
+    v2.0.0   Complete -- Python reference implementation (cfid_py), 28/28 tests, CF-ID verified language-independent
    v2.1.0   Complete -- pip install cfcolor (PyPI publish, live)
     v2.2.0   Complete -- Figma plugin (read-only CF-ID lookup, registry name, WCAG contrast)
-    v3.0.0   Planned  -- ICC profile support
-   v3.2.0   Planned  -- Spectral input (CF-Spectral-ID)
+    v3.0.0   Complete -- ICC profile support (the print bridge)
+    v3.1.0   Planned  -- Spectral input / CF-Spectral-ID
 
 ---
 
