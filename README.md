@@ -7,7 +7,7 @@ Full 24-bit RGB universe. CIELAB, CIELCH, CIEDE2000, OKLab, OKLCH, CMYK.
 Image-to-palette extraction. Multi-format exports. Written entirely in FARD.
 No FFI. No native dependencies. No external libraries.
 
-**6,698 lines of FARD. 246 tests, 29 suites, 0 failures.**
+**6,943 lines of FARD. 258 tests, 30 suites, 0 failures.**
 **Plus: Python reference implementation (cfid_py), 28/28 tests passing.**
 **CF Protocol Specification v1.0.0 published — CF-ID is language-independent.**
 
@@ -157,6 +157,7 @@ Cite receipts for public claims, not fard_run_digest.
 - Native BMP reader verified against sips-generated files
 - ICC parser verified against real macOS sRGB and Display P3 profiles (header, tag table, XYZ matrix, TRC curves, profile-to-profile roundtrips)
 - Spectral pipeline verified: flat 100% reflectance -> LAB L~100, white sRGB; metamerism demonstrated (distinct CF-Spectral-IDs for visually-identical curves)
+- Naming layer verified: version hashes are deterministic and content-dependent; different naming databases produce different (valid) names for the same CF-ID
 
 ---
 
@@ -189,6 +190,7 @@ MacBook Pro, FARD v1.7.1 interpreter.
 | `apps/icc_convert.fard <hex> <src.icc> <dst.icc>` | Convert colour between ICC profiles via XYZ PCS, with CF IDs and receipt |
 | `apps/spectral.fard <reflectance-csv\|flat-value>` | Spectral reflectance (380-730nm, 10nm) -> XYZ/LAB/sRGB, CF-ID, CF-Spectral-ID |
 | `apps/pigments.fard [name]` | CF Historical Pigment Corpus -- 12 pigments with provenance, sRGB best-fit, gamut loss, CF-ID + CF-Spectral-ID |
+| `apps/naming.fard <hex> [naming-db.ndjson]` | Nearest colour name from any versioned naming database (CIE76 + CIEDE2000), receipt binds db version hash |
 | `apps/palette.fard <image> [k]` | Extract k dominant colours from any image via k-means in LAB |
 | `apps/build_registry.fard [k]` | Generate CF registry: by-hex, by-id, shards, receipts |
 | `apps/build_search_index.fard [k]` | Generate registry search index |
@@ -286,7 +288,8 @@ MacBook Pro, FARD v1.7.1 interpreter.
     v3.0.0   Complete -- ICC profile support (the print bridge)
     v3.1.0   Complete -- Spectral input / CF-Spectral-ID
     v3.2.0   Complete -- CF Historical Pigment Corpus (12 pigments, provenance, CF-Spectral-ID)
-    v4.0.0   Planned  -- CDN registry (K=200), ICC-calibrated CMYK, community naming layer, CF Colour Claim Protocol
+    v3.3.0   Complete -- Community Naming Layer (versioned NDJSON databases, content-hash versioning)
+    v4.0.0   Planned  -- CDN registry (K=200), ICC-calibrated CMYK, CF Colour Claim Protocol, CF Protocol v2.0 / W3C
 
 ---
 
