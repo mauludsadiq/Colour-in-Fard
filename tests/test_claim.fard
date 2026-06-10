@@ -1,0 +1,155 @@
+import("std/list") as list
+import("std/str") as str
+import("../src/core/claim") as claim_mod
+import("../src/core/spectral") as sp
+
+fn basic_fields(name, hex) {
+  {
+    name: name,
+    srgb_hex: hex,
+    spectral_reflectance: null,
+    cmyk: null,
+    icc_profile: null,
+    nearest_reference: null,
+    provenance: { measured_by: null, organisation: null, date: null, notes: null }
+  }
+}
+
+test "make_claim produces correct cf_id" {
+  let claim = claim_mod.make_claim(basic_fields("Red", "#ff0000")) in
+  claim.cf_id == "CF-FF0000-37AB74A7"
+}
+
+test "make_claim normalises hex to lowercase" {
+  let claim = claim_mod.make_claim(basic_fields("Red", "#FF0000")) in
+  claim.srgb_hex == "#ff0000"
+}
+
+test "make_claim sets claim_version and protocol_version" {
+  let claim = claim_mod.make_claim(basic_fields("Red", "#ff0000")) in
+  claim.claim_version == "CF-Claim-1.0.0" && claim.protocol_version == "CF-Protocol-1.0.0"
+}
+
+test "make_claim produces a sha256-prefixed digest" {
+  let claim = claim_mod.make_claim(basic_fields("Red", "#ff0000")) in
+  str.starts_with(claim.claim_digest, "sha256:")
+}
+
+test "freshly made claim verifies as valid" {
+  let claim = claim_mod.make_claim(basic_fields("Red", "#ff0000")) in
+  let result = claim_mod.verify_claim(claim) in
+  result.valid
+}
+
+test "claim with wrong cf_id is invalid" {
+  let claim = claim_mod.make_claim(basic_fields("Red", "#ff0000")) in
+  let bad = {
+    claim_version: claim.claim_version,
+    name: claim.name,
+    srgb_hex: claim.srgb_hex,
+    cf_id: "CF-000000-86165F20",
+    spectral_reflectance: claim.spectral_reflectance,
+    cf_spectral_id: claim.cf_spectral_id,
+    cmyk: claim.cmyk,
+    icc_profile: claim.icc_profile,
+    nearest_reference: claim.nearest_reference,
+    provenance: claim.provenance,
+    protocol_version: claim.protocol_version,
+    claim_digest: claim.claim_digest
+  } in
+  let result = claim_mod.verify_claim(bad) in
+  !result.valid
+}
+
+test "tampered claim (digest mismatch) is invalid" {
+  let claim = claim_mod.make_claim(basic_fields("Red", "#ff0000")) in
+  let tampered = {
+    claim_version: claim.claim_version,
+    name: "Tampered",
+    srgb_hex: claim.srgb_hex,
+    cf_id: claim.cf_id,
+    spectral_reflectance: claim.spectral_reflectance,
+    cf_spectral_id: claim.cf_spectral_id,
+    cmyk: claim.cmyk,
+    icc_profile: claim.icc_profile,
+    nearest_reference: claim.nearest_reference,
+    provenance: claim.provenance,
+    protocol_version: claim.protocol_version,
+    claim_digest: claim.claim_digest
+  } in
+  let result = claim_mod.verify_claim(tampered) in
+  !result.valid
+}
+
+test "claim with spectral curve includes cf_spectral_id" {
+  let fields = basic_fields("Grey", "#bbbcbb") in
+  let with_spectral = {
+    name: fields.name,
+    srgb_hex: fields.srgb_hex,
+    spectral_reflectance: sp.flat_reflectance(0.5),
+    cmyk: fields.cmyk,
+    icc_profile: fields.icc_profile,
+    nearest_reference: fields.nearest_reference,
+    provenance: fields.provenance
+  } in
+  let claim = claim_mod.make_claim(with_spectral) in
+  claim.cf_spectral_id != null && str.starts_with(claim.cf_spectral_id, "CF-SPECTRAL-")
+}
+
+test "claim with spectral curve verifies as valid" {
+  let fields = basic_fields("Grey", "#bbbcbb") in
+  let with_spectral = {
+    name: fields.name,
+    srgb_hex: fields.srgb_hex,
+    spectral_reflectance: sp.flat_reflectance(0.5),
+    cmyk: fields.cmyk,
+    icc_profile: fields.icc_profile,
+    nearest_reference: fields.nearest_reference,
+    provenance: fields.provenance
+  } in
+  let claim = claim_mod.make_claim(with_spectral) in
+  let result = claim_mod.verify_claim(claim) in
+  result.valid
+}
+
+test "claim with mismatched cf_spectral_id is invalid" {
+  let fields = basic_fields("Grey", "#bbbcbb") in
+  let with_spectral = {
+    name: fields.name,
+    srgb_hex: fields.srgb_hex,
+    spectral_reflectance: sp.flat_reflectance(0.5),
+    cmyk: fields.cmyk,
+    icc_profile: fields.icc_profile,
+    nearest_reference: fields.nearest_reference,
+    provenance: fields.provenance
+  } in
+  let claim = claim_mod.make_claim(with_spectral) in
+  let bad = {
+    claim_version: claim.claim_version,
+    name: claim.name,
+    srgb_hex: claim.srgb_hex,
+    cf_id: claim.cf_id,
+    spectral_reflectance: claim.spectral_reflectance,
+    cf_spectral_id: "CF-SPECTRAL-DEADBEEF",
+    cmyk: claim.cmyk,
+    icc_profile: claim.icc_profile,
+    nearest_reference: claim.nearest_reference,
+    provenance: claim.provenance,
+    protocol_version: claim.protocol_version,
+    claim_digest: claim.claim_digest
+  } in
+  let result = claim_mod.verify_claim(bad) in
+  !result.valid
+}
+
+test "make_claim is deterministic" {
+  let claim1 = claim_mod.make_claim(basic_fields("Red", "#ff0000")) in
+  let claim2 = claim_mod.make_claim(basic_fields("Red", "#ff0000")) in
+  claim1.claim_digest == claim2.claim_digest
+}
+
+test "different names produce different digests for same colour" {
+  let claim1 = claim_mod.make_claim(basic_fields("Red A", "#ff0000")) in
+  let claim2 = claim_mod.make_claim(basic_fields("Red B", "#ff0000")) in
+  claim1.claim_digest != claim2.claim_digest && claim1.cf_id == claim2.cf_id
+}

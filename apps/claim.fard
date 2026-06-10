@@ -1,0 +1,82 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/io") as io
+import("std/cli") as cli
+import("std/json") as json
+import("std/fs") as fs
+import("../src/core/claim") as claim_mod
+
+fn main() {
+  let args = cli.args() in
+  if list.len(args) == 0 then
+    let _ = io.println("usage:") in
+    let _ = io.println("  claim create <name> <hex> [out-path]") in
+    io.println("  claim verify <claim.json>")
+  else
+    let mode = list.get(args, 0) in
+
+    if mode == "create" then
+      if list.len(args) < 3 then
+        io.println("usage: claim create <name> <hex> [out-path]")
+      else
+        let name    = list.get(args, 1) in
+        let hex_in  = list.get(args, 2) in
+        let out_path = if list.len(args) > 3 then list.get(args, 3) else "out/claim.json" in
+
+        let fields = {
+          name: name,
+          srgb_hex: hex_in,
+          spectral_reflectance: null,
+          cmyk: null,
+          icc_profile: null,
+          nearest_reference: null,
+          provenance: {
+            measured_by: null,
+            organisation: null,
+            date: null,
+            notes: null
+          }
+        } in
+
+        let claim = claim_mod.make_claim(fields) in
+
+        let _ = fs.make_dir("out") in
+        let _ = fs.write_text(out_path, json.encode(claim)) in
+
+        let _ = io.println("") in
+        let _ = io.println(str.concat(["claim created: ", out_path])) in
+        let _ = io.println(str.concat(["  name:   ", claim.name])) in
+        let _ = io.println(str.concat(["  hex:    ", claim.srgb_hex])) in
+        let _ = io.println(str.concat(["  cf_id:  ", claim.cf_id])) in
+        io.println(str.concat(["  digest: ", claim.claim_digest]))
+
+    else if mode == "verify" then
+      if list.len(args) < 2 then
+        io.println("usage: claim verify <claim.json>")
+      else
+        let path = list.get(args, 1) in
+        let content = fs.read_text(path) in
+        let claim = json.decode(content) in
+        let result = claim_mod.verify_claim(claim) in
+
+        let _ = io.println("") in
+        let _ = io.println(str.concat(["claim:  ", path])) in
+        let _ = io.println(str.concat(["name:   ", claim.name])) in
+        let _ = io.println(str.concat(["hex:    ", claim.srgb_hex])) in
+        let _ = io.println(str.concat(["cf_id:  ", claim.cf_id])) in
+        let _ = io.println("") in
+
+        if result.valid then
+          io.println("VALID -- cf_id matches srgb_hex, claim_digest matches content")
+        else
+          let _ = io.println("INVALID:") in
+          list.fold(result.errors, 0, fn(_, e) {
+            io.println(str.concat(["  - ", e]))
+          })
+
+    else
+      io.println(str.concat(["unknown mode: ", mode, " (expected 'create' or 'verify')"]))
+}
+
+main()
