@@ -9,9 +9,9 @@ test "index.json exists" {
   fs.exists("docs/registry/index.json")
 }
 
-test "index has correct total for K=20" {
+test "index has correct total for K=100" {
   let idx = json.decode(fs.read_text("docs/registry/index.json")) in
-  idx.total == 9261
+  idx.total == 1030301
 }
 
 test "index has correct version" {
@@ -57,8 +57,8 @@ test "entry cf_id matches filename" {
   e.cf_id == "CF-000000-86165F20"
 }
 
-test "receipt exists for K=20" {
-  fs.exists("docs/registry/receipts/registry_K20.receipt.json")
+test "receipt exists for K=100" {
+  fs.exists("docs/registry/receipts/registry_K100.receipt.json")
 }
 
 test "receipt has correct kind" {
