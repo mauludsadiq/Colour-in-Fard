@@ -1,0 +1,165 @@
+// CF Historical Pigment Corpus v1.0.0
+//
+// Each entry provides a representative spectral reflectance curve
+// (380-730nm, 10nm steps, 36 samples) based on the general published
+// spectral character of each pigment in the colorimetry/conservation
+// literature (broad reflectance shape -- not a measurement of any single
+// physical sample). Each entry is run through src/core/spectral.fard to
+// produce XYZ, LAB, an sRGB best-fit, a CF-ID, and a CF-Spectral-ID.
+//
+// provenance: brief note on the pigment's historical/material origin.
+// This corpus is a starting point for a measured, citation-backed dataset --
+// contributions of real spectrophotometer data (X-Rite, i1Pro, etc.) for
+// these and other pigments are the natural next step.
+
+let PIGMENTS = [
+
+  {
+    name: "Egyptian Blue",
+    category: "synthetic, ancient",
+    provenance: "Earliest known synthetic pigment, calcium copper silicate (CaCuSi4O10), used in Egypt from ~3000 BCE.",
+    reflectance: [
+      0.05,0.05,0.06,0.07,0.08,0.10,0.13,0.18,0.25,0.34,
+      0.45,0.55,0.62,0.65,0.62,0.55,0.45,0.35,0.28,0.22,
+      0.18,0.16,0.15,0.15,0.16,0.17,0.19,0.21,0.23,0.25,
+      0.27,0.29,0.31,0.33,0.35,0.37
+    ]
+  },
+
+  {
+    name: "Lapis Lazuli (Ultramarine)",
+    category: "natural mineral",
+    provenance: "Ground lazurite from lapis lazuli, primarily mined in Afghanistan (Sar-e-Sang); the most expensive blue pigment of the medieval and Renaissance periods.",
+    reflectance: [
+      0.04,0.05,0.06,0.08,0.10,0.13,0.18,0.26,0.38,0.50,
+      0.58,0.60,0.55,0.45,0.32,0.22,0.15,0.11,0.09,0.08,
+      0.08,0.08,0.09,0.10,0.11,0.13,0.15,0.17,0.19,0.21,
+      0.23,0.25,0.27,0.29,0.31,0.33
+    ]
+  },
+
+  {
+    name: "Malachite",
+    category: "natural mineral",
+    provenance: "Basic copper carbonate (Cu2CO3(OH)2), used as a green pigment from antiquity through the Renaissance, especially in Egyptian and European painting.",
+    reflectance: [
+      0.04,0.04,0.05,0.06,0.07,0.09,0.12,0.16,0.22,0.30,
+      0.40,0.50,0.58,0.62,0.60,0.52,0.40,0.28,0.19,0.14,
+      0.11,0.10,0.09,0.09,0.10,0.10,0.11,0.12,0.13,0.14,
+      0.15,0.16,0.17,0.18,0.19,0.20
+    ]
+  },
+
+  {
+    name: "Vermilion (Cinnabar)",
+    category: "mineral / synthetic",
+    provenance: "Mercury(II) sulfide (HgS); natural form mined as cinnabar, synthetic form produced since antiquity. Brilliant red used across Asian and European painting traditions.",
+    reflectance: [
+      0.03,0.03,0.04,0.04,0.04,0.04,0.05,0.05,0.05,0.06,
+      0.06,0.07,0.07,0.08,0.08,0.09,0.10,0.12,0.16,0.25,
+      0.42,0.58,0.66,0.69,0.70,0.71,0.71,0.72,0.72,0.72,
+      0.73,0.73,0.73,0.73,0.73,0.73
+    ]
+  },
+
+  {
+    name: "Yellow Ochre",
+    category: "natural earth",
+    provenance: "Iron oxide hydroxide (FeO(OH)) clay earth pigment, among the oldest pigments known, used continuously since prehistoric cave painting.",
+    reflectance: [
+      0.06,0.06,0.07,0.08,0.09,0.11,0.13,0.16,0.20,0.25,
+      0.31,0.38,0.45,0.51,0.56,0.60,0.62,0.64,0.65,0.66,
+      0.66,0.67,0.67,0.67,0.68,0.68,0.68,0.69,0.69,0.69,
+      0.69,0.70,0.70,0.70,0.70,0.70
+    ]
+  },
+
+  {
+    name: "Raw Umber",
+    category: "natural earth",
+    provenance: "Iron and manganese oxide clay earth pigment, sourced historically from Umbria, Italy; a staple brown of Old Master painting.",
+    reflectance: [
+      0.03,0.03,0.04,0.04,0.05,0.05,0.06,0.07,0.08,0.10,
+      0.12,0.14,0.16,0.18,0.20,0.21,0.22,0.23,0.24,0.25,
+      0.26,0.27,0.28,0.29,0.30,0.31,0.32,0.33,0.34,0.35,
+      0.36,0.37,0.38,0.39,0.40,0.41
+    ]
+  },
+
+  {
+    name: "Indigo",
+    category: "organic dye/pigment",
+    provenance: "Derived from Indigofera plants, one of the oldest organic dyes in continuous use, valued in textiles and painting across Asia, Africa, and Europe.",
+    reflectance: [
+      0.03,0.03,0.04,0.04,0.05,0.06,0.08,0.10,0.13,0.16,
+      0.18,0.18,0.16,0.13,0.10,0.08,0.07,0.06,0.06,0.06,
+      0.07,0.08,0.09,0.10,0.11,0.12,0.13,0.14,0.15,0.16,
+      0.17,0.18,0.19,0.20,0.21,0.22
+    ]
+  },
+
+  {
+    name: "Prussian Blue",
+    category: "synthetic, early modern",
+    provenance: "Iron hexacyanoferrate, the first modern synthetic pigment, discovered c.1706 in Berlin; rapidly adopted across European and Japanese (ukiyo-e) art.",
+    reflectance: [
+      0.02,0.03,0.03,0.04,0.05,0.06,0.08,0.10,0.13,0.16,
+      0.18,0.18,0.15,0.11,0.08,0.06,0.05,0.04,0.04,0.04,
+      0.04,0.05,0.05,0.06,0.06,0.07,0.07,0.08,0.08,0.09,
+      0.09,0.10,0.10,0.11,0.11,0.12
+    ]
+  },
+
+  {
+    name: "Maya Blue",
+    category: "synthetic, ancient (Mesoamerica)",
+    provenance: "Indigo dye complexed with palygorskite clay, produced by Mesoamerican cultures; remarkably durable, found on murals and artifacts over a thousand years old.",
+    reflectance: [
+      0.05,0.05,0.06,0.07,0.09,0.12,0.17,0.24,0.33,0.43,
+      0.50,0.52,0.48,0.40,0.30,0.22,0.16,0.13,0.11,0.10,
+      0.10,0.11,0.12,0.13,0.15,0.17,0.19,0.21,0.23,0.25,
+      0.27,0.29,0.31,0.33,0.35,0.37
+    ]
+  },
+
+  {
+    name: "Lead White",
+    category: "synthetic, ancient",
+    provenance: "Basic lead carbonate, the dominant white pigment from antiquity until the 20th century; prized for opacity and warmth in oil painting.",
+    reflectance: [
+      0.78,0.80,0.82,0.84,0.85,0.86,0.87,0.88,0.88,0.89,
+      0.89,0.89,0.90,0.90,0.90,0.90,0.90,0.90,0.90,0.90,
+      0.90,0.90,0.90,0.90,0.90,0.90,0.90,0.90,0.90,0.90,
+      0.90,0.90,0.90,0.90,0.90,0.90
+    ]
+  },
+
+  {
+    name: "Tyrian Purple",
+    category: "organic dye, ancient",
+    provenance: "Extracted from Murex sea snails by Phoenician dyers; the famously costly purple of Roman imperial cloth, dibromoindigo.",
+    reflectance: [
+      0.04,0.04,0.05,0.05,0.06,0.07,0.08,0.09,0.10,0.11,
+      0.11,0.10,0.09,0.08,0.07,0.07,0.07,0.08,0.09,0.11,
+      0.14,0.18,0.22,0.26,0.29,0.31,0.32,0.33,0.33,0.34,
+      0.34,0.35,0.35,0.36,0.36,0.37
+    ]
+  },
+
+  {
+    name: "Han Purple",
+    category: "synthetic, ancient (China)",
+    provenance: "Barium copper silicate (BaCuSi2O6), a synthetic pigment produced in China from the Warring States period through the Han dynasty; chemically related to Egyptian Blue.",
+    reflectance: [
+      0.06,0.07,0.08,0.10,0.12,0.15,0.19,0.24,0.30,0.36,
+      0.40,0.40,0.36,0.30,0.24,0.20,0.18,0.18,0.19,0.21,
+      0.24,0.27,0.30,0.32,0.34,0.35,0.36,0.37,0.37,0.38,
+      0.38,0.39,0.39,0.40,0.40,0.41
+    ]
+  }
+
+]
+
+{
+  PIGMENTS: PIGMENTS
+}

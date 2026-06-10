@@ -1,0 +1,123 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/io") as io
+import("std/cli") as cli
+import("std/json") as json
+import("std/fs") as fs
+import("std/hash") as hash
+import("../src/core/spectral") as sp
+import("../src/data/pigments") as pigments_data
+import("../src/core/rgb_lab") as lab
+
+fn ff3(f) { str.from_float(cast.float(cast.int(f * 1000.0 + 0.5)) / 1000.0) }
+
+// Delta-E (CIE76) between a pigment's measured LAB and the LAB of its
+// clamped sRGB best-fit -- quantifies how much is "lost" representing
+// the pigment in sRGB.
+fn srgb_loss_de(measured_lab, srgb_hex_lab) {
+  lab.delta_e(measured_lab, srgb_hex_lab)
+}
+
+fn list_pigments() {
+  let _ = io.println("") in
+  let _ = io.println("CF Historical Pigment Corpus v1.0.0") in
+  let _ = io.println(str.concat([str.from_int(list.len(pigments_data.PIGMENTS)), " pigments\n"])) in
+  list.fold(pigments_data.PIGMENTS, 0, fn(_, p) {
+    let entry = sp.make_spectral_entry(p.reflectance) in
+    io.println(str.concat([
+      "  ", entry.hex, "  ", p.name,
+      "  (", entry.cf_id, ")"
+    ]))
+  })
+}
+
+fn show_pigment(name_query) {
+  let found = list.fold(pigments_data.PIGMENTS, null, fn(acc, p) {
+    if acc != null then acc
+    else if str.contains(str.lower(p.name), str.lower(name_query)) then p
+    else acc
+  }) in
+
+  if found == null then
+    io.println(str.concat(["pigment not found: ", name_query]))
+  else
+    let p = found in
+    let entry = sp.make_spectral_entry(p.reflectance) in
+    let measured_lab = sp.spectral_to_lab(p.reflectance) in
+
+    // sRGB best-fit LAB (from the clamped hex), for delta-E vs measured LAB
+    let hex_no_hash = str.slice(entry.hex, 1, 7) in
+    let r_byte = hex2_to_int(str.slice(hex_no_hash, 0, 2)) in
+    let g_byte = hex2_to_int(str.slice(hex_no_hash, 2, 4)) in
+    let b_byte = hex2_to_int(str.slice(hex_no_hash, 4, 6)) in
+    let srgb_rgb = { r: cast.float(r_byte)/255.0, g: cast.float(g_byte)/255.0, b: cast.float(b_byte)/255.0 } in
+    let srgb_lab = lab.rgb_to_lab(srgb_rgb) in
+    let de = lab.delta_e(measured_lab, srgb_lab) in
+
+    let _ = io.println("") in
+    let _ = io.println(p.name) in
+    let _ = io.println(str.concat(["category:   ", p.category])) in
+    let _ = io.println(str.concat(["provenance: ", p.provenance])) in
+    let _ = io.println("") in
+    let _ = io.println(str.concat(["measured LAB (D65): L=", ff3(measured_lab.l), " a=", ff3(measured_lab.a), " b=", ff3(measured_lab.b)])) in
+    let _ = io.println(str.concat(["sRGB best fit:      ", entry.hex])) in
+    let _ = io.println(str.concat(["sRGB-fit loss (dE76): ", ff3(de)])) in
+    let _ = if entry.out_of_gamut then io.println("(measured colour is out of sRGB gamut -- clamped)") else 0 in
+    let _ = io.println("") in
+    let _ = io.println(str.concat(["cf_id:          ", entry.cf_id])) in
+    let _ = io.println(str.concat(["cf_spectral_id: ", entry.cf_spectral_id])) in
+
+    // Receipt
+    let _ = fs.make_dir("out") in
+    let receipt = {
+      kind: "pigment",
+      inputs: {
+        name: p.name,
+        category: p.category,
+        provenance: p.provenance,
+        reflectance: list.map(p.reflectance, sp.round4)
+      },
+      outputs: {
+        cf_id: entry.cf_id,
+        cf_spectral_id: entry.cf_spectral_id,
+        hex: entry.hex,
+        measured_lab: [measured_lab.l, measured_lab.a, measured_lab.b],
+        srgb_loss_de00_approx: de,
+        out_of_gamut: entry.out_of_gamut
+      },
+      input_digest:  hash.sha256_text(sp.spectral_preimage(p.reflectance)),
+      output_digest: hash.sha256_text(entry.cf_id),
+      identity_version: "CF-Spectral-1.0.0",
+      corpus_version: "CF-Pigment-Corpus-1.0.0"
+    } in
+    let _ = fs.write_text("out/pigment.receipt.json", json.encode(receipt)) in
+    io.println("\nreceipt: out/pigment.receipt.json")
+}
+
+fn hex_digit_val(c) {
+  if c == "0" then 0 else if c == "1" then 1 else if c == "2" then 2
+  else if c == "3" then 3 else if c == "4" then 4 else if c == "5" then 5
+  else if c == "6" then 6 else if c == "7" then 7 else if c == "8" then 8
+  else if c == "9" then 9
+  else if c == "a" || c == "A" then 10
+  else if c == "b" || c == "B" then 11
+  else if c == "c" || c == "C" then 12
+  else if c == "d" || c == "D" then 13
+  else if c == "e" || c == "E" then 14
+  else 15
+}
+
+fn hex2_to_int(s) {
+  hex_digit_val(str.slice(s, 0, 1)) * 16 + hex_digit_val(str.slice(s, 1, 2))
+}
+
+fn main() {
+  let args = cli.args() in
+  if list.len(args) == 0 then
+    list_pigments()
+  else
+    show_pigment(list.get(args, 0))
+}
+
+main()

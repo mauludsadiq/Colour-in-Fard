@@ -1,0 +1,73 @@
+import("std/math") as math
+import("std/list") as list
+import("std/str") as str
+import("../src/data/pigments") as pigments_data
+import("../src/core/spectral") as sp
+
+test "corpus has 12 pigments" {
+  list.len(pigments_data.PIGMENTS) == 12
+}
+
+test "every pigment has 36-sample reflectance curve" {
+  list.fold(pigments_data.PIGMENTS, true, fn(acc, p) {
+    acc && list.len(p.reflectance) == 36
+  })
+}
+
+test "every pigment has name, category, provenance" {
+  list.fold(pigments_data.PIGMENTS, true, fn(acc, p) {
+    acc && str.len(p.name) > 0 && str.len(p.category) > 0 && str.len(p.provenance) > 0
+  })
+}
+
+test "every reflectance value is in [0,1]" {
+  list.fold(pigments_data.PIGMENTS, true, fn(acc, p) {
+    acc && list.fold(p.reflectance, true, fn(acc2, v) {
+      acc2 && v >= 0.0 && v <= 1.0
+    })
+  })
+}
+
+test "every pigment produces a valid CF-ID and CF-Spectral-ID" {
+  list.fold(pigments_data.PIGMENTS, true, fn(acc, p) {
+    let entry = sp.make_spectral_entry(p.reflectance) in
+    acc &&
+    str.starts_with(entry.cf_id, "CF-") &&
+    str.starts_with(entry.cf_spectral_id, "CF-SPECTRAL-")
+  })
+}
+
+test "all pigment CF-Spectral-IDs are unique" {
+  let ids = list.map(pigments_data.PIGMENTS, fn(p) {
+    sp.cf_spectral_id(p.reflectance)
+  }) in
+  list.len(ids) == list.len(list.dedupe(ids))
+}
+
+test "Lead White is the lightest pigment" {
+  let lead_white = list.fold(pigments_data.PIGMENTS, null, fn(acc, p) {
+    if p.name == "Lead White" then p else acc
+  }) in
+  let lab_lw = sp.spectral_to_lab(lead_white.reflectance) in
+  list.fold(pigments_data.PIGMENTS, true, fn(acc, p) {
+    let lab_p = sp.spectral_to_lab(p.reflectance) in
+    acc && (p.name == "Lead White" || lab_lw.l >= lab_p.l)
+  })
+}
+
+test "Lead White is near-neutral (low chroma)" {
+  let lead_white = list.fold(pigments_data.PIGMENTS, null, fn(acc, p) {
+    if p.name == "Lead White" then p else acc
+  }) in
+  let lab_lw = sp.spectral_to_lab(lead_white.reflectance) in
+  let chroma = math.sqrt(lab_lw.a * lab_lw.a + lab_lw.b * lab_lw.b) in
+  chroma < 5.0
+}
+
+test "Vermilion is in sRGB gamut" {
+  let vermilion = list.fold(pigments_data.PIGMENTS, null, fn(acc, p) {
+    if str.contains(p.name, "Vermilion") then p else acc
+  }) in
+  let entry = sp.make_spectral_entry(vermilion.reflectance) in
+  !entry.out_of_gamut
+}
