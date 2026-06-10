@@ -17,6 +17,7 @@ No FFI. No native dependencies. No external libraries.
 
    Registry:  https://mauludsadiq.github.io/Colour-in-Fard/registry/index.json
    Viewer:    https://mauludsadiq.github.io/Colour-in-Fard/viewer.html
+   PyPI:      https://pypi.org/project/cfcolor/
    Repo:      https://github.com/mauludsadiq/Colour-in-Fard
 
 ---
@@ -274,7 +275,8 @@ MacBook Pro, FARD v1.7.1 interpreter.
    v1.10.0  Complete -- Image→Palette (native BMP reader, k-means LAB)
    v1.11.0  Planned  -- CF Protocol Specification v1.0 (SPEC.md)
    v2.0.0   Planned  -- Python/JS reference implementation (pip install cfid)
-   v2.1.0   Planned  -- Figma plugin
+   v2.1.0   Complete -- pip install cfcolor (PyPI publish, live)
+    v2.2.0   Planned  -- Figma plugin
    v3.0.0   Planned  -- ICC profile support
    v3.2.0   Planned  -- Spectral input (CF-Spectral-ID)
 
