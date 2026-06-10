@@ -1,4 +1,4 @@
-# cfid
+# cfcolor
 
 Python reference implementation of the CF Colour Protocol.
 
@@ -7,11 +7,11 @@ verifiable identity computed from first principles.
 
 ## Install
 
-    pip install cfid
+    pip install cfcolor
 
 ## Usage
 
-    from cfid import from_hex, from_rgb
+    from cfcolor import from_hex, from_rgb
 
     from_hex("#7B3F00")     # "CF-7B3F00-EA262463"
     from_hex("#000000")     # "CF-000000-86165F20"

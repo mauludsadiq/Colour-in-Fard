@@ -2,7 +2,7 @@
 CF-ID conformance tests -- verifies all SPEC.md Section 5 test vectors.
 """
 import pytest
-from cfid import from_hex, from_rgb, rgb_to_lab, lab_hash
+from cfcolor import from_hex, from_rgb, rgb_to_lab, lab_hash
 
 
 # --- Section 5.1: CF-ID test vectors ---

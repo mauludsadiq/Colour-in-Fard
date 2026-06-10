@@ -1,1 +1,5 @@
 out/
+cfid_py/dist/
+cfid_py/*.egg-info/
+cfid_py/build/
+receipts/
