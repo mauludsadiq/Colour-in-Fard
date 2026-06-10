@@ -1,0 +1,32 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/io") as io
+import("std/cli") as cli
+import("../src/core/types") as t
+import("../src/core/cube") as cube
+import("../src/core/cf_id") as cf
+import("../src/core/rgb_lab") as lab
+
+fn main() {
+  let args = cli.args() in
+  let k = if list.len(args) > 0 then cast.int(list.get(args, 0)) else 50 in
+  let n = k + 1 in
+  let total = n * n * n in
+
+  let _ = io.println(str.concat(["bench K=", str.from_int(k), " -- ", str.from_int(total), " colours"])) in
+
+  let palette = cube.enumerate_cube_palette(k) in
+  let colours = list.map(palette, fn(c) { cube.color_i_to_rgb_f(c, k) }) in
+
+  let count = list.fold(colours, 0, fn(acc, rgb) {
+    let l_val = lab.rgb_to_lab(rgb) in
+    let lch   = lab.lab_to_lch(l_val) in
+    let cf_id = cf.make_cf_id(rgb) in
+    acc + 1
+  }) in
+
+  io.println(str.concat(["computed ", str.from_int(count), " entries"]))
+}
+
+main()
