@@ -264,3 +264,7 @@ https://github.com/mauludsadiq/FARD
 
 fs.read_bytes was added to the FARD runtime as part of this project to
 enable native binary file parsing (BMP, ICC) without FFI.
+
+# License
+
+MUI
