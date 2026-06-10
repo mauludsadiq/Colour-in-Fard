@@ -1,0 +1,286 @@
+import("std/fs") as fs
+import("std/bytes") as bytes
+import("std/list") as list
+import("std/cast") as cast
+import("std/str") as str
+import("../core/types") as t
+import("std/math") as math
+
+// ICC profile reader -- pure FARD using fs.read_bytes
+// Supports matrix/TRC RGB profiles (sRGB, Display P3, Adobe RGB, etc.)
+// Reference: ICC.1:2010 (ICC profile format specification)
+//
+// All multi-byte integers in ICC are big-endian.
+
+fn read_u8(data, offset) {
+  bytes.get(data, offset)
+}
+
+fn read_u16_be(data, offset) {
+  bytes.get(data, offset) * 256 + bytes.get(data, offset + 1)
+}
+
+fn read_u32_be(data, offset) {
+  bytes.get(data, offset) * 16777216 +
+  bytes.get(data, offset + 1) * 65536 +
+  bytes.get(data, offset + 2) * 256 +
+  bytes.get(data, offset + 3)
+}
+
+fn read_i32_be(data, offset) {
+  let raw = read_u32_be(data, offset) in
+  if raw >= 2147483648 then raw - 4294967296 else raw
+}
+
+// s15Fixed16Number: signed 16.16 fixed point
+fn read_s15fixed16(data, offset) {
+  cast.float(read_i32_be(data, offset)) / 65536.0
+}
+
+fn ascii_byte_to_char(code) {
+  // Printable ASCII range covers all ICC tag signature characters (32-126)
+  let chars = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~" in
+  if code < 32 || code > 126 then "?" else
+  str.slice(chars, code - 32, code - 31)
+}
+
+fn read_tag_signature(data, offset) {
+  list.fold(list.range(0, 4), "", fn(acc, i) {
+    let code = read_u8(data, offset + i) in
+    str.concat([acc, ascii_byte_to_char(code)])
+  })
+}
+
+// --- Profile header (128 bytes) ---
+
+fn read_header(data) {
+  {
+    size:             read_u32_be(data, 0),
+    cmm_type:         read_tag_signature(data, 4),
+    version:          read_u32_be(data, 8),
+    device_class:     read_tag_signature(data, 12),
+    colour_space:     read_tag_signature(data, 16),
+    pcs:              read_tag_signature(data, 20),
+    rendering_intent: read_u32_be(data, 64)
+  }
+}
+
+// --- Tag table ---
+
+fn read_tag_table(data) {
+  let count = read_u32_be(data, 128) in
+  list.build(count, fn(i) {
+    let entry_offset = 132 + i * 12 in
+    {
+      sig:    read_tag_signature(data, entry_offset),
+      offset: read_u32_be(data, entry_offset + 4),
+      size:   read_u32_be(data, entry_offset + 8)
+    }
+  })
+}
+
+fn find_tag(tags, sig) {
+  let result = list.fold(tags, null, fn(acc, tag) {
+    if acc == null && tag.sig == sig then tag else acc
+  }) in
+  result
+}
+
+// --- XYZ tag (type 'XYZ ') ---
+// Layout: 4 bytes type sig, 4 bytes reserved, then N * 3 * s15Fixed16 (X,Y,Z)
+
+fn read_xyz_tag(data, tag_offset) {
+  {
+    x: read_s15fixed16(data, tag_offset + 8),
+    y: read_s15fixed16(data, tag_offset + 12),
+    z: read_s15fixed16(data, tag_offset + 16)
+  }
+}
+
+// --- curv tag (type 'curv') ---
+// Layout: 4 bytes type sig, 4 bytes reserved, 4 bytes count, then N * u16 entries
+// count == 0: identity (linear)
+// count == 1: single gamma value (u8Fixed8Number, value/256)
+// count > 1:  lookup table of u16 values, 0..65535 mapped to input 0..1
+
+fn read_curv_tag(data, tag_offset) {
+  let type_sig = read_tag_signature(data, tag_offset) in
+  if type_sig == "para" then
+    // Parametric curve (ICC type 'para'). Function type at offset+8 (u16).
+    // Type 0: gamma only (g). Type 3 (sRGB-style): g,a,b,c,d -- approximate
+    // as a pure gamma using g for now (full piecewise support is future work).
+    let func_type = read_u16_be(data, tag_offset + 8) in
+    let g_raw = read_s15fixed16(data, tag_offset + 12) in
+    { kind: "gamma", gamma: g_raw, table: [] }
+  else if type_sig != "curv" then
+    // Unknown/unsupported curve type -- fall back to identity
+    { kind: "identity", gamma: 1.0, table: [] }
+  else
+    let count = read_u32_be(data, tag_offset + 8) in
+    if count == 0 then
+      { kind: "identity", gamma: 1.0, table: [] }
+    else if count == 1 then
+      let raw = read_u16_be(data, tag_offset + 12) in
+      { kind: "gamma", gamma: cast.float(raw) / 256.0, table: [] }
+    else
+      let table = list.build(count, fn(i) {
+        cast.float(read_u16_be(data, tag_offset + 12 + i * 2)) / 65535.0
+      }) in
+      { kind: "table", gamma: 1.0, table: table }
+}
+
+// Apply a curv tag's transfer function to a value in [0, 1]
+fn apply_curv(curv, v) {
+  if curv.kind == "identity" then v
+  else if curv.kind == "gamma" then
+    if v <= 0.0 then 0.0 else
+    let r = v in
+    let result = pow_approx(r, curv.gamma) in
+    result
+  else
+    // table lookup with linear interpolation
+    let n = list.len(curv.table) in
+    let idx_f = v * cast.float(n - 1) in
+    let idx0 = cast.int(idx_f) in
+    let idx1 = if idx0 + 1 < n then idx0 + 1 else idx0 in
+    let frac = idx_f - cast.float(idx0) in
+    let v0 = list.get(curv.table, idx0) in
+    let v1 = list.get(curv.table, idx1) in
+    v0 + (v1 - v0) * frac
+}
+
+// Simple x^y for y > 0, x in [0,1] using exp/ln via repeated approach
+// Since std/math may not export pow for fractional exponents on all builds,
+// use ln/exp identity: x^y = exp(y * ln(x))
+fn pow_approx(x, y) {
+  if x <= 0.0 then 0.0 else
+  import_math_pow(x, y)
+}
+
+fn import_math_pow(x, y) {
+  math.pow(x, y)
+}
+
+// --- Profile loading ---
+
+fn read_profile(path) {
+  let data = fs.read_bytes(path) in
+  let header = read_header(data) in
+  let tags = read_tag_table(data) in
+
+  let rxyz_tag = find_tag(tags, "rXYZ") in
+  let gxyz_tag = find_tag(tags, "gXYZ") in
+  let bxyz_tag = find_tag(tags, "bXYZ") in
+  let rtrc_tag = find_tag(tags, "rTRC") in
+  let gtrc_tag = find_tag(tags, "gTRC") in
+  let btrc_tag = find_tag(tags, "bTRC") in
+
+  let has_matrix = rxyz_tag != null && gxyz_tag != null && bxyz_tag != null in
+  let has_trc    = rtrc_tag != null && gtrc_tag != null && btrc_tag != null in
+
+  if !has_matrix || !has_trc then
+    { ok: false, header: header, error: "not a matrix/TRC RGB profile" }
+  else
+    {
+      ok:      true,
+      header:  header,
+      r_xyz:   read_xyz_tag(data, rxyz_tag.offset),
+      g_xyz:   read_xyz_tag(data, gxyz_tag.offset),
+      b_xyz:   read_xyz_tag(data, bxyz_tag.offset),
+      r_trc:   read_curv_tag(data, rtrc_tag.offset),
+      g_trc:   read_curv_tag(data, gtrc_tag.offset),
+      b_trc:   read_curv_tag(data, btrc_tag.offset)
+    }
+}
+
+// --- Colour conversion using profile ---
+
+// Convert RGB (0..1, gamma-encoded per profile) to PCS XYZ
+fn profile_rgb_to_xyz(profile, rgb) {
+  let rl = apply_curv(profile.r_trc, rgb.r) in
+  let gl = apply_curv(profile.g_trc, rgb.g) in
+  let bl = apply_curv(profile.b_trc, rgb.b) in
+
+  {
+    x: rl * profile.r_xyz.x + gl * profile.g_xyz.x + bl * profile.b_xyz.x,
+    y: rl * profile.r_xyz.y + gl * profile.g_xyz.y + bl * profile.b_xyz.y,
+    z: rl * profile.r_xyz.z + gl * profile.g_xyz.z + bl * profile.b_xyz.z
+  }
+}
+
+
+// --- Inverse operations for profile-to-profile conversion ---
+
+// Invert a TRC curve: given an output value v in [0,1], find input that produces it
+fn invert_curv(curv, v) {
+  if curv.kind == "identity" then v
+  else if curv.kind == "gamma" then
+    if v <= 0.0 then 0.0 else math.pow(v, 1.0 / curv.gamma)
+  else
+    // Inverse table lookup: table maps input index -> output value
+    // Find the two table entries that bracket v, interpolate input position
+    let n = list.len(curv.table) in
+    let result = list.fold(list.range(0, n - 1), null, fn(acc, i) {
+      if acc != null then acc else
+      let v0 = list.get(curv.table, i) in
+      let v1 = list.get(curv.table, i + 1) in
+      if (v0 <= v && v <= v1) || (v1 <= v && v <= v0) then
+        let frac = if v1 == v0 then 0.0 else (v - v0) / (v1 - v0) in
+        (cast.float(i) + frac) / cast.float(n - 1)
+      else null
+    }) in
+    if result == null then
+      (if v <= list.get(curv.table, 0) then 0.0 else 1.0)
+    else result
+}
+
+// 3x3 matrix inverse for XYZ<->RGB matrix conversion
+fn invert_matrix3(m) {
+  let a = m.r.x in let b = m.g.x in let c = m.b.x in
+  let d = m.r.y in let e = m.g.y in let f = m.b.y in
+  let g = m.r.z in let h = m.g.z in let i = m.b.z in
+  let det = a*(e*i - f*h) - b*(d*i - f*g) + c*(d*h - e*g) in
+  {
+    r: { x: (e*i - f*h)/det, y: (f*g - d*i)/det, z: (d*h - e*g)/det },
+    g: { x: (c*h - b*i)/det, y: (a*i - c*g)/det, z: (b*g - a*h)/det },
+    b: { x: (b*f - c*e)/det, y: (c*d - a*f)/det, z: (a*e - b*d)/det }
+  }
+}
+
+// Convert PCS XYZ to RGB (gamma-encoded) using profile's matrix and TRC
+fn profile_xyz_to_rgb(profile, xyz) {
+  let inv = invert_matrix3({ r: profile.r_xyz, g: profile.g_xyz, b: profile.b_xyz }) in
+  let rl = xyz.x * inv.r.x + xyz.y * inv.g.x + xyz.z * inv.b.x in
+  let gl = xyz.x * inv.r.y + xyz.y * inv.g.y + xyz.z * inv.b.y in
+  let bl = xyz.x * inv.r.z + xyz.y * inv.g.z + xyz.z * inv.b.z in
+  t.rgb_f(
+    invert_curv(profile.r_trc, rl),
+    invert_curv(profile.g_trc, gl),
+    invert_curv(profile.b_trc, bl)
+  )
+}
+
+// Convert RGB from one profile's space to another via shared PCS XYZ
+fn convert_profile_to_profile(src_profile, dst_profile, rgb) {
+  let xyz = profile_rgb_to_xyz(src_profile, rgb) in
+  profile_xyz_to_rgb(dst_profile, xyz)
+}
+
+{
+  read_header:               read_header,
+  read_tag_table:            read_tag_table,
+  find_tag:                  find_tag,
+  read_xyz_tag:               read_xyz_tag,
+  read_curv_tag:             read_curv_tag,
+  apply_curv:                apply_curv,
+  invert_curv:               invert_curv,
+  invert_matrix3:            invert_matrix3,
+  read_profile:              read_profile,
+  profile_rgb_to_xyz:        profile_rgb_to_xyz,
+  profile_xyz_to_rgb:        profile_xyz_to_rgb,
+  convert_profile_to_profile: convert_profile_to_profile,
+  read_tag_signature:        read_tag_signature,
+  read_s15fixed16:           read_s15fixed16,
+  read_u32_be:               read_u32_be,
+  read_u16_be:               read_u16_be
+}

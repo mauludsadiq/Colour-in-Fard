@@ -1,0 +1,49 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/io") as io
+import("std/cli") as cli
+import("std/fs") as fs
+import("../src/core/icc_read") as icc
+
+fn ff4(f) { str.from_float(cast.float(cast.int(f * 10000.0 + 0.5)) / 10000.0) }
+
+fn main() {
+  let args = cli.args() in
+  if list.len(args) == 0 then
+    io.println("usage: icc_info <path-to-icc-profile>")
+  else
+    let path = list.get(args, 0) in
+    let data = fs.read_bytes(path) in
+    let h = icc.read_header(data) in
+    let tags = icc.read_tag_table(data) in
+    let p = icc.read_profile(path) in
+
+    let _ = io.println(str.concat(["\nfile:         ", path])) in
+    let _ = io.println(str.concat(["device class: ", h.device_class])) in
+    let _ = io.println(str.concat(["colour space: ", h.colour_space])) in
+    let _ = io.println(str.concat(["PCS:          ", h.pcs])) in
+    let _ = io.println(str.concat(["tags:         ", str.from_int(list.len(tags))])) in
+    let _ = io.println("") in
+    let _ = io.println("tag table:") in
+    let _ = list.fold(tags, 0, fn(_, tag) {
+      io.println(str.concat(["  ", tag.sig, "  offset=", str.from_int(tag.offset), "  size=", str.from_int(tag.size)]))
+    }) in
+
+    if !p.ok then
+      io.println(str.concat(["\nnot a matrix/TRC RGB profile: ", p.error]))
+    else
+      let _ = io.println("\nmatrix (RGB -> PCS XYZ):") in
+      let _ = io.println(str.concat(["  rXYZ: X=", ff4(p.r_xyz.x), " Y=", ff4(p.r_xyz.y), " Z=", ff4(p.r_xyz.z)])) in
+      let _ = io.println(str.concat(["  gXYZ: X=", ff4(p.g_xyz.x), " Y=", ff4(p.g_xyz.y), " Z=", ff4(p.g_xyz.z)])) in
+      let _ = io.println(str.concat(["  bXYZ: X=", ff4(p.b_xyz.x), " Y=", ff4(p.b_xyz.y), " Z=", ff4(p.b_xyz.z)])) in
+      let _ = io.println("\ntone reproduction curves:") in
+      let _ = io.println(str.concat(["  rTRC: ", p.r_trc.kind, if p.r_trc.kind == "gamma" then str.concat([" (gamma=", ff4(p.r_trc.gamma), ")"]) else if p.r_trc.kind == "table" then str.concat([" (", str.from_int(list.len(p.r_trc.table)), " entries)"]) else ""])) in
+      let _ = io.println(str.concat(["  gTRC: ", p.g_trc.kind, if p.g_trc.kind == "gamma" then str.concat([" (gamma=", ff4(p.g_trc.gamma), ")"]) else if p.g_trc.kind == "table" then str.concat([" (", str.from_int(list.len(p.g_trc.table)), " entries)"]) else ""])) in
+      let _ = io.println(str.concat(["  bTRC: ", p.b_trc.kind, if p.b_trc.kind == "gamma" then str.concat([" (gamma=", ff4(p.b_trc.gamma), ")"]) else if p.b_trc.kind == "table" then str.concat([" (", str.from_int(list.len(p.b_trc.table)), " entries)"]) else ""])) in
+
+      let white_xyz = icc.profile_rgb_to_xyz(p, { r: 1.0, g: 1.0, b: 1.0 }) in
+      io.println(str.concat(["\nwhitepoint (RGB 1,1,1 -> XYZ): X=", ff4(white_xyz.x), " Y=", ff4(white_xyz.y), " Z=", ff4(white_xyz.z)]))
+}
+
+main()

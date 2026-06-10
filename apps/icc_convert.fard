@@ -1,0 +1,111 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/io") as io
+import("std/cli") as cli
+import("std/json") as json
+import("std/fs") as fs
+import("std/hash") as hash
+import("../src/core/icc_read") as icc
+import("../src/core/cf_id") as cf
+
+fn ff3(f) { str.from_float(cast.float(cast.int(f * 1000.0 + 0.5)) / 1000.0) }
+
+fn hex_digit_val(c) {
+  if c == "0" then 0 else if c == "1" then 1 else if c == "2" then 2
+  else if c == "3" then 3 else if c == "4" then 4 else if c == "5" then 5
+  else if c == "6" then 6 else if c == "7" then 7 else if c == "8" then 8
+  else if c == "9" then 9
+  else if c == "a" || c == "A" then 10
+  else if c == "b" || c == "B" then 11
+  else if c == "c" || c == "C" then 12
+  else if c == "d" || c == "D" then 13
+  else if c == "e" || c == "E" then 14
+  else 15
+}
+
+fn hex2_to_int(s) {
+  hex_digit_val(str.slice(s, 0, 1)) * 16 + hex_digit_val(str.slice(s, 1, 2))
+}
+
+fn hex_to_rgb(hex_str) {
+  let h = if str.starts_with(hex_str, "#") then str.slice(hex_str, 1, str.len(hex_str)) else hex_str in
+  let r = hex2_to_int(str.slice(h, 0, 2)) in
+  let g = hex2_to_int(str.slice(h, 2, 4)) in
+  let b = hex2_to_int(str.slice(h, 4, 6)) in
+  { r: cast.float(r) / 255.0, g: cast.float(g) / 255.0, b: cast.float(b) / 255.0 }
+}
+
+fn clamp01(v) {
+  if v < 0.0 then 0.0 else if v > 1.0 then 1.0 else v
+}
+
+fn rgb_to_hex(rgb) {
+  let r = cast.int(clamp01(rgb.r) * 255.0 + 0.5) in
+  let g = cast.int(clamp01(rgb.g) * 255.0 + 0.5) in
+  let b = cast.int(clamp01(rgb.b) * 255.0 + 0.5) in
+  let r_byte = { r: clamp01(rgb.r), g: clamp01(rgb.g), b: clamp01(rgb.b) } in
+  str.concat(["#", str.lower(cf.byte_to_hex_upper(r)), str.lower(cf.byte_to_hex_upper(g)), str.lower(cf.byte_to_hex_upper(b))])
+}
+
+fn main() {
+  let args = cli.args() in
+  if list.len(args) < 3 then
+    io.println("usage: icc_convert <hex> <src-profile.icc> <dst-profile.icc>")
+  else
+    let hex_in   = list.get(args, 0) in
+    let src_path = list.get(args, 1) in
+    let dst_path = list.get(args, 2) in
+
+    let src = icc.read_profile(src_path) in
+    let dst = icc.read_profile(dst_path) in
+
+    if !src.ok then
+      io.println(str.concat(["error: source profile -- ", src.error]))
+    else if !dst.ok then
+      io.println(str.concat(["error: destination profile -- ", dst.error]))
+    else
+      let rgb_in  = hex_to_rgb(hex_in) in
+      let rgb_out = icc.convert_profile_to_profile(src, dst, rgb_in) in
+      let hex_out = rgb_to_hex(rgb_out) in
+
+      let in_clamped  = { r: clamp01(rgb_in.r),  g: clamp01(rgb_in.g),  b: clamp01(rgb_in.b) } in
+      let out_clamped = { r: clamp01(rgb_out.r), g: clamp01(rgb_out.g), b: clamp01(rgb_out.b) } in
+
+      let cf_in  = cf.make_cf_id(in_clamped) in
+      let cf_out = cf.make_cf_id(out_clamped) in
+
+      let out_of_gamut =
+        rgb_out.r < 0.0 || rgb_out.r > 1.0 ||
+        rgb_out.g < 0.0 || rgb_out.g > 1.0 ||
+        rgb_out.b < 0.0 || rgb_out.b > 1.0 in
+
+      let _ = io.println("") in
+      let _ = io.println(str.concat(["source profile:      ", src_path])) in
+      let _ = io.println(str.concat(["destination profile: ", dst_path])) in
+      let _ = io.println("") in
+      let _ = io.println(str.concat(["input:  ", str.lower(hex_in), "  ", cf_in])) in
+      let _ = io.println(str.concat(["output: ", hex_out, "  ", cf_out])) in
+      let _ = io.println("") in
+      let _ = io.println(str.concat(["raw output rgb (pre-clamp): r=", ff3(rgb_out.r), " g=", ff3(rgb_out.g), " b=", ff3(rgb_out.b)])) in
+      let _ = if out_of_gamut then
+        io.println("warning: output colour is out of gamut for destination profile (clamped)")
+      else
+        io.println("output colour is in gamut")
+      in
+
+      // Receipt
+      let _ = fs.make_dir("out") in
+      let receipt = {
+        kind: "icc_convert",
+        inputs: { hex: str.lower(hex_in), src_profile: src_path, dst_profile: dst_path },
+        outputs: { hex: hex_out, cf_id_in: cf_in, cf_id_out: cf_out, out_of_gamut: out_of_gamut },
+        input_digest:  hash.sha256_text(json.encode({ hex: str.lower(hex_in), src_profile: src_path, dst_profile: dst_path })),
+        output_digest: hash.sha256_text(hex_out),
+        identity_version: cf.IDENTITY_VERSION
+      } in
+      let _ = fs.write_text("out/icc_convert.receipt.json", json.encode(receipt)) in
+      io.println("\nreceipt: out/icc_convert.receipt.json")
+}
+
+main()

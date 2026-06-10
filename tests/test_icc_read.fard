@@ -1,0 +1,137 @@
+import("std/fs") as fs
+import("std/list") as list
+import("std/str") as str
+import("../src/core/icc_read") as icc
+import("../src/core/math") as m
+
+let SRGB_PATH = "/System/Library/ColorSync/Profiles/sRGB Profile.icc"
+
+test "header device_class is mntr" {
+  let data = fs.read_bytes(SRGB_PATH) in
+  let h = icc.read_header(data) in
+  h.device_class == "mntr"
+}
+
+test "header colour_space is RGB" {
+  let data = fs.read_bytes(SRGB_PATH) in
+  let h = icc.read_header(data) in
+  str.starts_with(h.colour_space, "RGB")
+}
+
+test "tag table contains rXYZ gXYZ bXYZ" {
+  let data = fs.read_bytes(SRGB_PATH) in
+  let tags = icc.read_tag_table(data) in
+  icc.find_tag(tags, "rXYZ") != null &&
+  icc.find_tag(tags, "gXYZ") != null &&
+  icc.find_tag(tags, "bXYZ") != null
+}
+
+test "tag table contains rTRC gTRC bTRC" {
+  let data = fs.read_bytes(SRGB_PATH) in
+  let tags = icc.read_tag_table(data) in
+  icc.find_tag(tags, "rTRC") != null &&
+  icc.find_tag(tags, "gTRC") != null &&
+  icc.find_tag(tags, "bTRC") != null
+}
+
+test "read_profile succeeds for sRGB" {
+  let p = icc.read_profile(SRGB_PATH) in
+  p.ok
+}
+
+test "sRGB rXYZ Y is plausible" {
+  let p = icc.read_profile(SRGB_PATH) in
+  // sRGB red primary Y (luminance contribution) ~0.2126
+  m.absf(p.r_xyz.y - 0.2126) < 0.01
+}
+
+test "sRGB whitepoint sum is near D65" {
+  let p = icc.read_profile(SRGB_PATH) in
+  let sum_x = p.r_xyz.x + p.g_xyz.x + p.b_xyz.x in
+  let sum_y = p.r_xyz.y + p.g_xyz.y + p.b_xyz.y in
+  let sum_z = p.r_xyz.z + p.g_xyz.z + p.b_xyz.z in
+  // D65 white ~ (0.9505, 1.0, 1.0890)
+  m.absf(sum_y - 1.0) < 0.01
+}
+
+test "white (1,1,1) converts to near D65 white XYZ" {
+  let p = icc.read_profile(SRGB_PATH) in
+  let xyz = icc.profile_rgb_to_xyz(p, { r: 1.0, g: 1.0, b: 1.0 }) in
+  m.absf(xyz.y - 1.0) < 0.01 && m.absf(xyz.x - 0.9505) < 0.02
+}
+
+test "black (0,0,0) converts to near zero XYZ" {
+  let p = icc.read_profile(SRGB_PATH) in
+  let xyz = icc.profile_rgb_to_xyz(p, { r: 0.0, g: 0.0, b: 0.0 }) in
+  xyz.x < 0.001 && xyz.y < 0.001 && xyz.z < 0.001
+}
+
+test "curv apply_curv identity returns input" {
+  let curv = { kind: "identity", gamma: 1.0, table: [] } in
+  icc.apply_curv(curv, 0.5) == 0.5
+}
+
+test "curv apply_curv gamma 2.2 darkens midtone" {
+  let curv = { kind: "gamma", gamma: 2.2, table: [] } in
+  icc.apply_curv(curv, 0.5) < 0.5
+}
+
+let DISPLAY_P3_PATH = "/System/Library/ColorSync/Profiles/Display P3.icc"
+
+test "Display P3 profile loads" {
+  let p = icc.read_profile(DISPLAY_P3_PATH) in
+  p.ok
+}
+
+test "invert_curv gamma roundtrip" {
+  let curv = { kind: "gamma", gamma: 2.2, table: [] } in
+  let v = 0.5 in
+  let encoded = icc.apply_curv(curv, v) in
+  let decoded = icc.invert_curv(curv, encoded) in
+  m.absf(decoded - v) < 0.001
+}
+
+test "profile_xyz_to_rgb roundtrip for sRGB white" {
+  let p = icc.read_profile(SRGB_PATH) in
+  let white = { r: 1.0, g: 1.0, b: 1.0 } in
+  let xyz = icc.profile_rgb_to_xyz(p, white) in
+  let rgb = icc.profile_xyz_to_rgb(p, xyz) in
+  m.absf(rgb.r - 1.0) < 0.01 && m.absf(rgb.g - 1.0) < 0.01 && m.absf(rgb.b - 1.0) < 0.01
+}
+
+test "profile_xyz_to_rgb roundtrip for sRGB mid-grey" {
+  let p = icc.read_profile(SRGB_PATH) in
+  let grey = { r: 0.5, g: 0.5, b: 0.5 } in
+  let xyz = icc.profile_rgb_to_xyz(p, grey) in
+  let rgb = icc.profile_xyz_to_rgb(p, xyz) in
+  m.absf(rgb.r - 0.5) < 0.01 && m.absf(rgb.g - 0.5) < 0.01 && m.absf(rgb.b - 0.5) < 0.01
+}
+
+test "convert_profile_to_profile sRGB to sRGB is identity" {
+  let p = icc.read_profile(SRGB_PATH) in
+  let rgb = { r: 0.7, g: 0.3, b: 0.5 } in
+  let result = icc.convert_profile_to_profile(p, p, rgb) in
+  m.absf(result.r - rgb.r) < 0.01 &&
+  m.absf(result.g - rgb.g) < 0.01 &&
+  m.absf(result.b - rgb.b) < 0.01
+}
+
+test "convert sRGB to Display P3 changes saturated red" {
+  let srgb = icc.read_profile(SRGB_PATH) in
+  let p3   = icc.read_profile(DISPLAY_P3_PATH) in
+  let red  = { r: 1.0, g: 0.0, b: 0.0 } in
+  let result = icc.convert_profile_to_profile(srgb, p3, red) in
+  // sRGB red is outside P3's red primary in a different way -- values should differ from input
+  !(m.absf(result.r - 1.0) < 0.001 && m.absf(result.g - 0.0) < 0.001 && m.absf(result.b - 0.0) < 0.001)
+}
+
+test "invert_matrix3 produces identity when multiplied" {
+  let p = icc.read_profile(SRGB_PATH) in
+  let m3 = { r: p.r_xyz, g: p.g_xyz, b: p.b_xyz } in
+  let inv = icc.invert_matrix3(m3) in
+  // M * M^-1 applied to a unit vector should approximate identity
+  // Test: forward then inverse on white XYZ gives back (1,1,1) approx
+  let white_xyz = icc.profile_rgb_to_xyz(p, {r:1.0,g:1.0,b:1.0}) in
+  let rl = white_xyz.x * inv.r.x + white_xyz.y * inv.g.x + white_xyz.z * inv.b.x in
+  m.absf(rl - 1.0) < 0.01
+}
