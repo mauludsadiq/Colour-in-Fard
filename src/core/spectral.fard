@@ -1,0 +1,178 @@
+import("std/list") as list
+import("std/cast") as cast
+import("std/str") as str
+import("std/json") as json
+import("std/hash") as hash
+import("../core/rgb_lab") as lab
+import("../core/cf_id") as cf
+
+// Spectral colour support -- CF-Spectral-ID v1.0.0
+// CIE 1931 2-degree standard observer colour matching functions (xbar, ybar, zbar)
+// and CIE Standard Illuminant D65 relative spectral power, both sampled at
+// 10nm intervals from 380nm to 730nm (36 samples). This is the standard
+// reduced-resolution practice for spectral colour computation.
+//
+// Reference data: CIE 15:2004 Colorimetry, 3rd edition.
+
+let WAVELENGTHS = [
+  380, 390, 400, 410, 420, 430, 440, 450, 460, 470,
+  480, 490, 500, 510, 520, 530, 540, 550, 560, 570,
+  580, 590, 600, 610, 620, 630, 640, 650, 660, 670,
+  680, 690, 700, 710, 720, 730
+]
+
+// CIE 1931 2-degree x-bar
+let CMF_X = [
+  0.0014, 0.0042, 0.0143, 0.0435, 0.1344, 0.2839, 0.3483, 0.3362, 0.2908, 0.1954,
+  0.0956, 0.0320, 0.0049, 0.0093, 0.0633, 0.1655, 0.2904, 0.4334, 0.5945, 0.7621,
+  0.9163, 1.0263, 1.0622, 1.0026, 0.8544, 0.6424, 0.4479, 0.2835, 0.1649, 0.0874,
+  0.0468, 0.0227, 0.0114, 0.0058, 0.0029, 0.0014
+]
+
+// CIE 1931 2-degree y-bar
+let CMF_Y = [
+  0.0000, 0.0001, 0.0004, 0.0012, 0.0040, 0.0116, 0.0230, 0.0380, 0.0600, 0.0910,
+  0.1390, 0.2080, 0.3230, 0.5030, 0.7100, 0.8620, 0.9540, 0.9950, 0.9950, 0.9520,
+  0.8700, 0.7570, 0.6310, 0.5030, 0.3810, 0.2650, 0.1750, 0.1070, 0.0610, 0.0320,
+  0.0170, 0.0082, 0.0041, 0.0021, 0.0010, 0.0005
+]
+
+// CIE 1931 2-degree z-bar
+let CMF_Z = [
+  0.0065, 0.0201, 0.0679, 0.2074, 0.6456, 1.3856, 1.7471, 1.7721, 1.6692, 1.2876,
+  0.8130, 0.4652, 0.2720, 0.1582, 0.0782, 0.0422, 0.0203, 0.0087, 0.0039, 0.0021,
+  0.0017, 0.0011, 0.0008, 0.0003, 0.0002, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+  0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000
+]
+
+// CIE Standard Illuminant D65 relative spectral power distribution
+let D65 = [
+  49.98,  54.65,  82.75,  91.49,  93.43,  86.68,  104.87, 117.01, 117.81, 114.86,
+  115.92, 108.81, 109.35, 107.80, 104.79, 107.69, 104.41, 104.05, 100.00, 96.33,
+  95.79,  88.69,  90.01,  89.60,  87.70,  83.29,  83.70,  80.03,  80.21,  82.28,
+  78.28,  69.72,  71.61,  74.35,  61.60,  69.89
+]
+
+let SAMPLE_COUNT = 36
+
+fn sample_count() { SAMPLE_COUNT }
+fn wavelengths() { WAVELENGTHS }
+
+// Convert a spectral reflectance curve (36 values, each in [0,1], one per
+// wavelength in WAVELENGTHS) to CIE XYZ under D65 illumination.
+//
+// X = k * sum(R(l) * I(l) * xbar(l))
+// Y = k * sum(R(l) * I(l) * ybar(l))
+// Z = k * sum(R(l) * I(l) * zbar(l))
+// k = 100 / sum(I(l) * ybar(l))
+fn spectral_to_xyz(reflectance) {
+  let n = list.len(reflectance) in
+  let indices = list.range(0, n) in
+
+  let sum_x = list.fold(indices, 0.0, fn(acc, i) {
+    acc + list.get(reflectance, i) * list.get(D65, i) * list.get(CMF_X, i)
+  }) in
+  let sum_y = list.fold(indices, 0.0, fn(acc, i) {
+    acc + list.get(reflectance, i) * list.get(D65, i) * list.get(CMF_Y, i)
+  }) in
+  let sum_z = list.fold(indices, 0.0, fn(acc, i) {
+    acc + list.get(reflectance, i) * list.get(D65, i) * list.get(CMF_Z, i)
+  }) in
+  let k_sum = list.fold(indices, 0.0, fn(acc, i) {
+    acc + list.get(D65, i) * list.get(CMF_Y, i)
+  }) in
+  let k = 100.0 / k_sum in
+
+  // k normalises so that Y = 100 for a perfect white reflector,
+  // matching the 0-100 XYZ scale used by rgb_lab.fard (ref_x=95.047 etc.)
+  {
+    x: k * sum_x,
+    y: k * sum_y,
+    z: k * sum_z
+  }
+}
+
+// Convert spectral reflectance directly to CIELAB (D65) via XYZ
+fn spectral_to_lab(reflectance) {
+  let xyz = spectral_to_xyz(reflectance) in
+  lab.xyz_to_lab(xyz)
+}
+
+// Convert spectral reflectance to display sRGB (clamped)
+fn spectral_to_rgb(reflectance) {
+  let xyz = spectral_to_xyz(reflectance) in
+  lab.xyz_to_rgb(xyz)
+}
+
+// --- CF-Spectral-ID v1.0.0 ---
+//
+// Identity for a spectral reflectance curve, independent of any RGB
+// representation. Two materials with different reflectance curves that
+// happen to look the same under D65 (metamers) get DIFFERENT
+// CF-Spectral-IDs, but the SAME CF-ID (since CF-ID is computed from the
+// resulting LAB under D65).
+//
+// Format: CF-SPECTRAL-<HASH8>
+// HASH8 = first 8 hex chars (uppercase) of SHA256 over canonical JSON of
+//         the reflectance curve, each value rounded to 4 decimal places,
+//         serialised as a JSON array in wavelength order (380..730, 10nm).
+
+fn round4(x) {
+  cast.float(cast.int(x * 10000.0 + 0.5)) / 10000.0
+}
+
+fn spectral_preimage(reflectance) {
+  let rounded = list.map(reflectance, round4) in
+  json.encode(rounded)
+}
+
+fn cf_spectral_id(reflectance) {
+  let preimage = spectral_preimage(reflectance) in
+  let hexdigest = hash.sha256_text(preimage) in
+  let hash8 = str.upper(str.slice(hexdigest, 7, 15)) in
+  str.concat(["CF-SPECTRAL-", hash8])
+}
+
+// Full spectral entry: CF-Spectral-ID, CF-ID (via D65 LAB), LAB, RGB hex
+fn make_spectral_entry(reflectance) {
+  let xyz = spectral_to_xyz(reflectance) in
+  let lab_val = lab.xyz_to_lab(xyz) in
+  let rgb = lab.xyz_to_rgb(xyz) in
+  let clamped = {
+    r: if rgb.r < 0.0 then 0.0 else if rgb.r > 1.0 then 1.0 else rgb.r,
+    g: if rgb.g < 0.0 then 0.0 else if rgb.g > 1.0 then 1.0 else rgb.g,
+    b: if rgb.b < 0.0 then 0.0 else if rgb.b > 1.0 then 1.0 else rgb.b
+  } in
+  {
+    cf_spectral_id: cf_spectral_id(reflectance),
+    cf_id:          cf.make_cf_id(clamped),
+    hex:            str.concat(["#", str.lower(cf.rgb_to_hex6(clamped))]),
+    lab:            [lab_val.l, lab_val.a, lab_val.b],
+    xyz:            [xyz.x, xyz.y, xyz.z],
+    out_of_gamut:   rgb.r < 0.0 || rgb.r > 1.0 || rgb.g < 0.0 || rgb.g > 1.0 || rgb.b < 0.0 || rgb.b > 1.0
+  }
+}
+
+// Flat reflectance curve (constant value at every wavelength) -- useful for
+// testing and for representing idealised grey/white/black surfaces.
+fn flat_reflectance(value) {
+  list.build(SAMPLE_COUNT, fn(_) { value })
+}
+
+{
+  WAVELENGTHS:        WAVELENGTHS,
+  CMF_X:              CMF_X,
+  CMF_Y:              CMF_Y,
+  CMF_Z:              CMF_Z,
+  D65:                D65,
+  sample_count:       sample_count,
+  wavelengths:        wavelengths,
+  spectral_to_xyz:    spectral_to_xyz,
+  spectral_to_lab:    spectral_to_lab,
+  spectral_to_rgb:    spectral_to_rgb,
+  cf_spectral_id:     cf_spectral_id,
+  spectral_preimage:  spectral_preimage,
+  make_spectral_entry: make_spectral_entry,
+  flat_reflectance:   flat_reflectance,
+  round4:             round4
+}

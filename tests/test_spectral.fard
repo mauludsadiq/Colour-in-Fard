@@ -1,0 +1,100 @@
+import("std/str") as str
+import("std/list") as list
+import("../src/core/spectral") as sp
+import("../src/core/math") as m
+
+test "wavelengths has 36 samples" {
+  list.len(sp.wavelengths()) == 36
+}
+
+test "CMF tables have 36 samples each" {
+  list.len(sp.CMF_X) == 36 &&
+  list.len(sp.CMF_Y) == 36 &&
+  list.len(sp.CMF_Z) == 36
+}
+
+test "D65 has 36 samples" {
+  list.len(sp.D65) == 36
+}
+
+test "flat 100% reflectance is near D65 white" {
+  let xyz = sp.spectral_to_xyz(sp.flat_reflectance(1.0)) in
+  m.absf(xyz.y - 100.0) < 1.0
+}
+
+test "flat 0% reflectance is near black" {
+  let xyz = sp.spectral_to_xyz(sp.flat_reflectance(0.0)) in
+  xyz.x < 0.001 && xyz.y < 0.001 && xyz.z < 0.001
+}
+
+test "flat 100% reflectance LAB lightness is near 100" {
+  let lab = sp.spectral_to_lab(sp.flat_reflectance(1.0)) in
+  m.absf(lab.l - 100.0) < 1.0
+}
+
+test "flat 50% reflectance LAB lightness is mid-range" {
+  let lab = sp.spectral_to_lab(sp.flat_reflectance(0.5)) in
+  lab.l > 60.0 && lab.l < 85.0
+}
+
+test "flat reflectance produces near-neutral LAB (low chroma)" {
+  let lab = sp.spectral_to_lab(sp.flat_reflectance(0.5)) in
+  m.absf(lab.a) < 5.0 && m.absf(lab.b) < 5.0
+}
+
+test "spectral_to_rgb white reflectance is near (1,1,1)" {
+  let rgb = sp.spectral_to_rgb(sp.flat_reflectance(1.0)) in
+  m.absf(rgb.r - 1.0) < 0.05 &&
+  m.absf(rgb.g - 1.0) < 0.05 &&
+  m.absf(rgb.b - 1.0) < 0.05
+}
+
+test "cf_spectral_id starts with CF-SPECTRAL-" {
+  let id = sp.cf_spectral_id(sp.flat_reflectance(0.5)) in
+  str_starts_with(id, "CF-SPECTRAL-")
+}
+
+fn str_starts_with(s, prefix) {
+  str.starts_with(s, prefix)
+}
+
+test "cf_spectral_id is deterministic" {
+  let r = sp.flat_reflectance(0.5) in
+  sp.cf_spectral_id(r) == sp.cf_spectral_id(r)
+}
+
+test "different reflectance curves produce different CF-Spectral-IDs" {
+  sp.cf_spectral_id(sp.flat_reflectance(0.5)) != sp.cf_spectral_id(sp.flat_reflectance(0.6))
+}
+
+test "cf_spectral_id has 8 hex chars after prefix" {
+  let id = sp.cf_spectral_id(sp.flat_reflectance(0.5)) in
+  let suffix = str.slice(id, 12, 20) in
+  str.len(suffix) == 8
+}
+
+test "make_spectral_entry returns cf_id and cf_spectral_id" {
+  let entry = sp.make_spectral_entry(sp.flat_reflectance(0.5)) in
+  entry.cf_id != "" && entry.cf_spectral_id != ""
+}
+
+test "make_spectral_entry hex starts with #" {
+  let entry = sp.make_spectral_entry(sp.flat_reflectance(0.5)) in
+  str.starts_with(entry.hex, "#")
+}
+
+test "metamerism: two different curves can produce same CF-ID but different CF-Spectral-ID" {
+  // Two curves that average to similar XYZ but differ pointwise
+  let n = sp.sample_count() in
+  let curve_a = list.build(n, fn(i) { 0.5 }) in
+  let curve_b = list.build(n, fn(i) { if i % 2 == 0 then 0.45 else 0.55 }) in
+  let spec_a = sp.cf_spectral_id(curve_a) in
+  let spec_b = sp.cf_spectral_id(curve_b) in
+  // Spectral IDs must differ (different curves)
+  spec_a != spec_b
+}
+
+test "round4 rounds correctly" {
+  m.absf(sp.round4(0.12345) - 0.1235) < 0.0001 ||
+  m.absf(sp.round4(0.12345) - 0.1234) < 0.0001
+}

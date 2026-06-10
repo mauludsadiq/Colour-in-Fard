@@ -1,0 +1,74 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/io") as io
+import("std/cli") as cli
+import("std/json") as json
+import("std/fs") as fs
+import("std/hash") as hash
+import("../src/core/spectral") as sp
+
+fn ff3(f) { str.from_float(cast.float(cast.int(f * 1000.0 + 0.5)) / 1000.0) }
+
+// Parse a comma-separated string of floats
+fn parse_csv_floats(s) {
+  let parts = str.split(s, ",") in
+  list.map(parts, fn(p) { cast.float(p) })
+}
+
+fn main() {
+  let args = cli.args() in
+  if list.len(args) == 0 then
+    let _ = io.println("usage: spectral <reflectance-csv-or-flat-value>") in
+    let _ = io.println("") in
+    let _ = io.println("  reflectance-csv: 36 comma-separated values (380-730nm, 10nm steps)") in
+    io.println("  flat-value:       single number, applies same reflectance at all 36 wavelengths")
+  else
+    let arg = list.get(args, 0) in
+    let reflectance =
+      if str.contains(arg, ",") then parse_csv_floats(arg)
+      else sp.flat_reflectance(cast.float(arg)) in
+
+    let n = list.len(reflectance) in
+    if n != sp.sample_count() then
+      io.println(str.concat(["error: expected ", str.from_int(sp.sample_count()), " values, got ", str.from_int(n)]))
+    else
+      let entry = sp.make_spectral_entry(reflectance) in
+      let wavelengths = sp.wavelengths() in
+
+      let _ = io.println("") in
+      let _ = io.println("spectral reflectance curve (380-730nm, 10nm steps):") in
+      let _ = list.fold(list.range(0, n), 0, fn(_, i) {
+        io.println(str.concat(["  ", str.from_int(list.get(wavelengths, i)), "nm: ", ff3(list.get(reflectance, i))]))
+      }) in
+
+      let _ = io.println("") in
+      let _ = io.println(str.concat(["XYZ (D65, 0-100 scale): X=", ff3(list.get(entry.xyz,0)), " Y=", ff3(list.get(entry.xyz,1)), " Z=", ff3(list.get(entry.xyz,2))])) in
+      let _ = io.println(str.concat(["LAB: L=", ff3(list.get(entry.lab,0)), " a=", ff3(list.get(entry.lab,1)), " b=", ff3(list.get(entry.lab,2))])) in
+      let _ = io.println(str.concat(["sRGB: ", entry.hex])) in
+      let _ = if entry.out_of_gamut then io.println("(out of sRGB gamut -- clamped)") else 0 in
+      let _ = io.println("") in
+      let _ = io.println(str.concat(["cf_id:          ", entry.cf_id])) in
+      let _ = io.println(str.concat(["cf_spectral_id: ", entry.cf_spectral_id])) in
+
+      // Receipt
+      let _ = fs.make_dir("out") in
+      let receipt = {
+        kind: "spectral",
+        inputs: { reflectance: list.map(reflectance, sp.round4) },
+        outputs: {
+          cf_id: entry.cf_id,
+          cf_spectral_id: entry.cf_spectral_id,
+          hex: entry.hex,
+          lab: entry.lab,
+          out_of_gamut: entry.out_of_gamut
+        },
+        input_digest:  hash.sha256_text(sp.spectral_preimage(reflectance)),
+        output_digest: hash.sha256_text(entry.cf_id),
+        identity_version: "CF-Spectral-1.0.0"
+      } in
+      let _ = fs.write_text("out/spectral.receipt.json", json.encode(receipt)) in
+      io.println("\nreceipt: out/spectral.receipt.json")
+}
+
+main()
