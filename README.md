@@ -7,7 +7,7 @@ Full 24-bit RGB universe. CIELAB, CIELCH, CIEDE2000, OKLab, OKLCH, CMYK.
 Image-to-palette extraction. Multi-format exports. Written entirely in FARD.
 No FFI. No native dependencies. No external libraries.
 
-**7,178 lines of FARD. 269 tests, 31 suites, 0 failures.**
+**7,567 lines of FARD. 281 tests, 32 suites, 0 failures.**
 **Plus: Python (cfcolor, PyPI) and JavaScript reference implementations, both verified against SPEC.md.**
 **Plus: Python reference implementation (cfid_py), 28/28 tests passing.**
 **CF Protocol Specification v1.0.0 published — CF-ID is language-independent.**
@@ -174,6 +174,7 @@ Cite receipts for public claims, not fard_run_digest.
 - Spectral pipeline verified: flat 100% reflectance -> LAB L~100, white sRGB; metamerism demonstrated (distinct CF-Spectral-IDs for visually-identical curves)
 - Naming layer verified: version hashes are deterministic and content-dependent; different naming databases produce different (valid) names for the same CF-ID
 - ICC-calibrated CMYK verified: white/black produce correct CMYK extremes under real profile TRCs; Display P3 and sRGB profiles produce measurably different CMYK for the same input due to differing TRC shapes
+- CF Colour Claim Protocol verified: tampering (digest mismatch), cf_id mismatch, and cf_spectral_id mismatch are all detected; claim digests match across FARD and Python canonical JSON encodings
 
 ---
 
@@ -208,6 +209,7 @@ MacBook Pro, FARD v1.7.1 interpreter.
 | `apps/pigments.fard [name]` | CF Historical Pigment Corpus -- 12 pigments with provenance, sRGB best-fit, gamut loss, CF-ID + CF-Spectral-ID |
 | `apps/naming.fard <hex> [naming-db.ndjson]` | Nearest colour name from any versioned naming database (CIE76 + CIEDE2000), receipt binds db version hash |
 | `apps/icc_cmyk.fard <hex> <profile.icc> [k-factor]` | CMYK linearised via a real ICC profile's TRC vs standard sRGB-assumed CMYK |
+| `apps/claim.fard create <name> <hex> [out.json]` / `verify <claim.json>` | CF Colour Claim Protocol -- create and verify self-contained, tamper-evident colour claims |
 | `apps/palette.fard <image> [k]` | Extract k dominant colours from any image via k-means in LAB |
 | `apps/build_registry.fard [k]` | Generate CF registry: by-hex, by-id, shards, receipts |
 | `apps/build_search_index.fard [k]` | Generate registry search index |
@@ -308,7 +310,8 @@ MacBook Pro, FARD v1.7.1 interpreter.
     v3.3.0   Complete -- Community Naming Layer (versioned NDJSON databases, content-hash versioning)
     v3.4.0   Complete -- ICC-calibrated CMYK (input-side: profile TRC linearisation + GCR)
     v3.5.0   Complete -- VS Code extension (hover for CF-ID/LAB/LCH/WCAG, JS reference implementation)
-    v4.0.0   Planned  -- CDN registry (K=200), CF Colour Claim Protocol, CF Protocol v2.0 / W3C
+    v3.6.0   Complete -- CF Colour Claim Protocol (self-verifying brand colour claims, no licence required)
+    v4.0.0   Planned  -- CDN registry (K=200), CF Protocol v2.0 / W3C Community Group submission
 
 ---
 
