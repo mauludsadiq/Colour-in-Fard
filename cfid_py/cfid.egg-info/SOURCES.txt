@@ -1,0 +1,11 @@
+README.md
+pyproject.toml
+cfid/__init__.py
+cfid/__main__.py
+cfid/cfid.py
+cfid.egg-info/PKG-INFO
+cfid.egg-info/SOURCES.txt
+cfid.egg-info/dependency_links.txt
+cfid.egg-info/entry_points.txt
+cfid.egg-info/top_level.txt
+tests/test_cfid.py

@@ -1,0 +1,2 @@
+[console_scripts]
+cfid = cfid.__main__:main

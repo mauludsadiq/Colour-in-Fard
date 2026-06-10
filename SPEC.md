@@ -103,36 +103,44 @@ Compute LAB:
     a = 500 * (fx - fy)
     b = 200 * (fy - fz)
 
-### Step 5 — Serialise LAB
+### Step 5 — Round and Serialise LAB
 
-Round each component to 3 decimal places using round-half-up:
+Round each component to 3 decimal places using:
+
+    round3(x) = trunc(x * 1000.0 + 0.5) / 1000.0
+
+Where trunc() truncates toward zero (not floor). Note this is NOT standard
+round-half-up for negative numbers: round3(-86.183) = -86.182, because
+(-86.183 * 1000 + 0.5) = -86182.5, and trunc(-86182.5) = -86182.
 
     L_r = round3(L)
     a_r = round3(a)
     b_r = round3(b)
 
-Serialise as a UTF-8 string with no spaces:
+Serialise as canonical JSON with alphabetically sorted keys, no spaces:
 
-    preimage = str(L_r) + "," + str(a_r) + "," + str(b_r)
+    preimage = {"a":<a_r>,"b":<b_r>,"l":<L_r>}
 
-Where str() produces the minimal decimal representation: no trailing zeros
-beyond the 3rd decimal place, no leading zeros except the integer part.
+Where each numeric value is formatted as a JSON number: whole numbers are
+serialised WITHOUT a decimal point (e.g. 0, 100, -3), and non-whole numbers
+use the minimal decimal representation (e.g. 22.291, -86.182).
 
-Example: L=33.493, a=22.291, b=43.796 -> preimage = "33.493,22.291,43.796"
+Example: L=33.493, a=22.291, b=43.796
+  -> preimage = {"a":22.291,"b":43.796,"l":33.493}
 
-Special cases:
-- If a rounded value is exactly 0, serialise as "0.0"
-- If a rounded value is a whole number, serialise with ".0" (e.g. "100.0")
+Example: L=0, a=0, b=0
+  -> preimage = {"a":0,"b":0,"l":0}
 
 ### Step 6 — Compute LABHASH8
 
-Compute SHA-256 of the preimage string encoded as UTF-8:
+Compute SHA-256 of the preimage string encoded as UTF-8, producing a
+64-character lowercase hex digest:
 
-    hash = sha256(utf8(preimage))
+    hexdigest = lowercase_hex(sha256(utf8(preimage)))
 
-Take the first 4 bytes (8 hex characters) and convert to uppercase:
+Take the first 8 characters and convert to uppercase:
 
-    LABHASH8 = uppercase(hex(hash[0:4]))
+    LABHASH8 = uppercase(hexdigest[0:8])
 
 ### Step 7 — Assemble CF-ID
 
@@ -230,7 +238,7 @@ These test vectors MUST be reproduced exactly by any conformant implementation.
     #000000  (black)   CF-000000-86165F20
     #ffffff  (white)   CF-FFFFFF-2DD4EB92
     #ff0000  (red)     CF-FF0000-37AB74A7
-    #00ff00  (green)   CF-00FF00-7696CEEA
+    #00ff00  (green)   CF-00FF00-9377CC77
     #0000ff  (blue)    CF-0000FF-D81673DF
     #7b3f00  (sienna)  CF-7B3F00-EA262463
     #cc0000  (scarlet) CF-CC0000-791976F7
@@ -238,22 +246,27 @@ These test vectors MUST be reproduced exactly by any conformant implementation.
 
 ### 5.2 CIELAB Values (intermediate)
 
-    Input    L        a        b
-    ------   ------   ------   ------
-    #000000  0.0      0.0      0.0
-    #ffffff  100.0    0.0      0.003
-    #ff0000  53.389   80.812   67.234
-    #0000ff  32.303   79.187  -107.864
-    #7b3f00  33.493   22.291   43.796
+    Input    L         a         b
+    ------   -------   -------   --------
+    #000000    0.0       0.0        0.0
+    #ffffff  100.0       0.0        0.0
+    #ff0000   53.241    80.092     67.203
+    #00ff00   87.735   -86.183     83.179
+    #0000ff   32.297    79.188   -107.860
+    #7b3f00   33.493    22.291     43.796
+    #cc0000   42.524    67.696     56.802
 
 ### 5.3 LABHASH8 Preimages
 
-    Input    Preimage                    LABHASH8
-    ------   --------                    --------
-    #000000  "0.0,0.0,0.0"              86165F20
-    #ffffff  "100.0,0.0,0.003"          2DD4EB92
-    #7b3f00  "33.493,22.291,43.796"     EA262463
-    #cc0000  "42.524,67.696,56.802"     791976F7
+    Input    Preimage                            LABHASH8
+    ------   --------                            --------
+    #000000  {"a":0,"b":0,"l":0}                86165F20
+    #ffffff  {"a":0,"b":0,"l":100}              2DD4EB92
+    #ff0000  {"a":80.092,"b":67.203,"l":53.241} 37AB74A7
+    #00ff00  {"a":-86.183,"b":83.179,"l":87.735} 9377CC77
+    #0000ff  {"a":79.188,"b":-107.86,"l":32.297} D81673DF
+    #7b3f00  {"a":22.291,"b":43.796,"l":33.493} EA262463
+    #cc0000  {"a":67.696,"b":56.802,"l":42.524} 791976F7
 
 ### 5.4 WCAG Contrast Test Vectors
 

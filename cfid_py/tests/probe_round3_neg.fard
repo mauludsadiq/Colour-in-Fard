@@ -1,0 +1,8 @@
+import("std/io") as io
+import("std/str") as str
+import("std/cast") as cast
+import("../src/core/cf_id") as cf
+
+let v = -86.182999999
+let r = cf.round3(v)
+io.println(str.concat(["round3(-86.183) = ", str.from_float(r)]))
