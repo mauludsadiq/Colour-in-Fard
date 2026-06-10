@@ -1,0 +1,101 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/io") as io
+import("std/cli") as cli
+import("../src/core/types") as t
+import("../src/core/wcag") as wcag
+import("../src/core/color_name") as cn
+import("../src/core/cf_id") as cf
+import("../src/core/receipt") as receipt
+import("../src/export/json_catalogue") as jc
+
+fn hex_char_to_int(c) {
+  if c == "0" then 0 else if c == "1" then 1 else if c == "2" then 2
+  else if c == "3" then 3 else if c == "4" then 4 else if c == "5" then 5
+  else if c == "6" then 6 else if c == "7" then 7 else if c == "8" then 8
+  else if c == "9" then 9 else if c == "a" || c == "A" then 10
+  else if c == "b" || c == "B" then 11 else if c == "c" || c == "C" then 12
+  else if c == "d" || c == "D" then 13 else if c == "e" || c == "E" then 14
+  else 15
+}
+
+fn parse_byte(s, offset) {
+  hex_char_to_int(str.slice(s, offset, offset + 1)) * 16 +
+  hex_char_to_int(str.slice(s, offset + 1, offset + 2))
+}
+
+fn parse_hex(hex) {
+  let s = if str.starts_with(hex, "#") then str.slice(hex, 1, 7) else hex in
+  let r = parse_byte(s, 0) in
+  let g = parse_byte(s, 2) in
+  let b = parse_byte(s, 4) in
+  t.rgb_f(cast.float(r) / 255.0, cast.float(g) / 255.0, cast.float(b) / 255.0)
+}
+
+fn is_valid_hex(hex) {
+  let s = if str.starts_with(hex, "#") then str.slice(hex, 1, 7) else hex in
+  str.len(s) == 6
+}
+
+fn ff2(f) { str.from_float(cast.float(cast.int(f * 100.0 + 0.5)) / 100.0) }
+
+fn pass_fail(b) { if b then "pass" else "FAIL" }
+
+fn main() {
+  let args = cli.args() in
+  if list.len(args) < 2 then
+    io.println("usage: contrast <hex1> <hex2>  e.g. contrast #7B3F00 #ffffff")
+  else
+    let hex1 = list.get(args, 0) in
+    let hex2 = list.get(args, 1) in
+    if !is_valid_hex(hex1) then
+      io.println(str.concat(["error: invalid hex: ", hex1]))
+    else if !is_valid_hex(hex2) then
+      io.println(str.concat(["error: invalid hex: ", hex2]))
+    else
+      let rgb1  = parse_hex(hex1) in
+      let rgb2  = parse_hex(hex2) in
+      let cf1   = cf.make_cf_id(rgb1) in
+      let cf2   = cf.make_cf_id(rgb2) in
+      let r     = wcag.wcag_report(rgb1, rgb2) in
+
+      let output = str.concat([
+        "\nforeground: ", jc.rgb_to_hex(rgb1), " (", cn.nearest_name(rgb1), ")  ", cf1, "\n",
+        "background: ", jc.rgb_to_hex(rgb2), " (", cn.nearest_name(rgb2), ")  ", cf2, "\n",
+        "\ncontrast ratio: ", ff2(r.ratio), ":1\n",
+        "wcag level:     ", r.level, "\n",
+        "\nluminance fg:   ", ff2(r.luminance_1), "\n",
+        "luminance bg:   ", ff2(r.luminance_2), "\n",
+        "\nwcag 2.1:\n",
+        "  AA  normal text (4.5:1)  ", pass_fail(r.aa_normal), "\n",
+        "  AA  large text  (3.0:1)  ", pass_fail(r.aa_large), "\n",
+        "  AAA normal text (7.0:1)  ", pass_fail(r.aaa_normal), "\n",
+        "  AAA large text  (4.5:1)  ", pass_fail(r.aaa_large), "\n"
+      ]) in
+
+      let inputs = {
+        fg_hex:   jc.rgb_to_hex(rgb1),
+        bg_hex:   jc.rgb_to_hex(rgb2),
+        fg_cf_id: cf1,
+        bg_cf_id: cf2,
+        ratio:    r.ratio,
+        level:    r.level
+      } in
+
+      let rc = receipt.make_receipt(
+        "contrast",
+        inputs,
+        { naming_version: receipt.NAMING_VERSION, lab_version: receipt.LAB_VERSION, identity_version: cf.IDENTITY_VERSION },
+        output
+      ) in
+
+      let out_base     = str.concat(["out/contrast_", str.slice(jc.rgb_to_hex(rgb1), 1, 7), "_", str.slice(jc.rgb_to_hex(rgb2), 1, 7)]) in
+      let receipt_path = receipt.receipt_path(out_base) in
+      let _ = receipt.write_receipt(rc, receipt_path) in
+
+      let _ = io.println(output) in
+      io.println(str.concat(["receipt: ", receipt_path]))
+}
+
+main()

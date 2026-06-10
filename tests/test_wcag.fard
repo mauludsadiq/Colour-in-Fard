@@ -1,0 +1,74 @@
+import("std/list") as list
+import("../src/core/types") as t
+import("../src/core/math") as m
+import("../src/core/wcag") as wcag
+
+let black = t.rgb_f(0.0, 0.0, 0.0)
+let white = t.rgb_f(1.0, 1.0, 1.0)
+let red   = t.rgb_f(1.0, 0.0, 0.0)
+let mid   = t.rgb_f(0.5, 0.5, 0.5)
+
+fn closef(a, b) { m.absf(a - b) < 0.01 }
+
+test "black luminance is 0" {
+  wcag.relative_luminance(black) == 0.0
+}
+
+test "white luminance is 1" {
+  closef(wcag.relative_luminance(white), 1.0)
+}
+
+test "black on white is 21:1" {
+  closef(wcag.contrast_ratio(black, white), 21.0)
+}
+
+test "white on white is 1:1" {
+  closef(wcag.contrast_ratio(white, white), 1.0)
+}
+
+test "contrast is symmetric" {
+  closef(wcag.contrast_ratio(black, white), wcag.contrast_ratio(white, black))
+}
+
+test "black on white passes AAA" {
+  wcag.passes_aaa_normal(black, white)
+}
+
+test "black on white passes AA" {
+  wcag.passes_aa_normal(black, white)
+}
+
+test "white on white fails AA" {
+  !wcag.passes_aa_normal(white, white)
+}
+
+test "red on white passes AA large" {
+  wcag.passes_aa_large(red, white)
+}
+
+test "red on white fails AA normal" {
+  !wcag.passes_aa_normal(red, white)
+}
+
+test "wcag level black on white is AAA" {
+  wcag.wcag_level(black, white) == "AAA"
+}
+
+test "wcag level white on white is fail" {
+  wcag.wcag_level(white, white) == "fail"
+}
+
+test "report has ratio" {
+  let r = wcag.wcag_report(black, white) in
+  r.ratio > 20.0
+}
+
+test "report has level" {
+  let r = wcag.wcag_report(black, white) in
+  r.level == "AAA"
+}
+
+test "report luminance fields correct" {
+  let r = wcag.wcag_report(black, white) in
+  r.luminance_1 == 0.0 && closef(r.luminance_2, 1.0)
+}

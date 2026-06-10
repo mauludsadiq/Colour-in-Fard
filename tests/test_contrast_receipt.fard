@@ -1,0 +1,86 @@
+import("std/str") as str
+import("../src/core/types") as t
+import("../src/core/wcag") as wcag
+import("../src/core/receipt") as receipt
+import("../src/core/cf_id") as cf
+import("../src/export/json_catalogue") as jc
+import("../src/core/math") as m
+
+fn make_contrast_receipt(rgb1, rgb2) {
+  let cf1 = cf.make_cf_id(rgb1) in
+  let cf2 = cf.make_cf_id(rgb2) in
+  let r   = wcag.wcag_report(rgb1, rgb2) in
+  let output = str.concat([jc.rgb_to_hex(rgb1), jc.rgb_to_hex(rgb2), r.level]) in
+  let inputs = {
+    fg_hex:   jc.rgb_to_hex(rgb1),
+    bg_hex:   jc.rgb_to_hex(rgb2),
+    fg_cf_id: cf1,
+    bg_cf_id: cf2,
+    ratio:    r.ratio,
+    level:    r.level
+  } in
+  receipt.make_receipt("contrast", inputs,
+    { naming_version: receipt.NAMING_VERSION, lab_version: receipt.LAB_VERSION, identity_version: cf.IDENTITY_VERSION },
+    output)
+}
+
+let black = t.rgb_f(0.0, 0.0, 0.0)
+let white = t.rgb_f(1.0, 1.0, 1.0)
+let red   = t.rgb_f(1.0, 0.0, 0.0)
+let blue  = t.rgb_f(0.0, 0.0, 1.0)
+
+test "same inputs produce same digest" {
+  let r1 = make_contrast_receipt(black, white) in
+  let r2 = make_contrast_receipt(black, white) in
+  r1.input_digest == r2.input_digest && r1.output_digest == r2.output_digest
+}
+
+test "different inputs produce different digest" {
+  let r1 = make_contrast_receipt(black, white) in
+  let r2 = make_contrast_receipt(red, white) in
+  r1.input_digest != r2.input_digest
+}
+
+test "different outputs produce different output digest" {
+  let r1 = make_contrast_receipt(black, white) in
+  let r2 = make_contrast_receipt(red, blue) in
+  r1.output_digest != r2.output_digest
+}
+
+test "reversed fg/bg produces different input digest" {
+  let r1 = make_contrast_receipt(black, white) in
+  let r2 = make_contrast_receipt(white, black) in
+  r1.input_digest != r2.input_digest
+}
+
+test "reversed fg/bg has same contrast ratio" {
+  m.absf(wcag.contrast_ratio(black, white) - wcag.contrast_ratio(white, black)) < 0.001
+}
+
+test "receipt binds CF IDs" {
+  let r = make_contrast_receipt(black, white) in
+  r.inputs.fg_cf_id == cf.make_cf_id(black) && r.inputs.bg_cf_id == cf.make_cf_id(white)
+}
+
+test "receipt binds ratio" {
+  let r = make_contrast_receipt(black, white) in
+  r.inputs.ratio > 20.0
+}
+
+test "receipt binds level" {
+  let r = make_contrast_receipt(black, white) in
+  r.inputs.level == "AAA"
+}
+
+test "known ratio black on white is 21:1" {
+  m.absf(wcag.contrast_ratio(black, white) - 21.0) < 0.01
+}
+
+test "known ratio red on white ~3.99:1" {
+  let ratio = wcag.contrast_ratio(red, white) in
+  ratio > 3.9 && ratio < 4.1
+}
+
+test "known ratio black on black is 1:1" {
+  m.absf(wcag.contrast_ratio(black, black) - 1.0) < 0.001
+}

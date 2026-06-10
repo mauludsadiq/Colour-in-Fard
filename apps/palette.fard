@@ -1,0 +1,79 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/io") as io
+import("std/cli") as cli
+import("../src/core/types") as t
+import("../src/core/kmeans") as km
+import("../src/core/image_read") as imgread
+import("../src/core/color_name") as cn
+import("../src/core/cf_id") as cf
+import("../src/core/wcag") as wcag
+import("../src/core/rgb_lab") as lab
+import("../src/core/receipt") as receipt
+import("../src/export/json_catalogue") as jc
+import("../src/render/svg") as svg
+import("../src/render/image_export") as img
+
+fn ff2(f) { str.from_float(cast.float(cast.int(f * 100.0 + 0.5)) / 100.0) }
+
+fn main() {
+  let args = cli.args() in
+  if list.len(args) == 0 then
+    io.println("usage: palette <image_path> [k]  e.g. palette photo.jpg 6")
+  else
+    let path  = list.get(args, 0) in
+    let k     = if list.len(args) > 1 then cast.int(list.get(args, 1)) else 6 in
+    let iters = 12 in
+
+    let _ = io.println(str.concat(["reading pixels from ", path, "..."])) in
+    let pixels = imgread.read_image_pixels(path, 64) in
+    let n_pixels = list.len(pixels) in
+
+    if n_pixels == 0 then
+      io.println("error: could not read image pixels")
+    else
+      let _ = io.println(str.concat(["sampled ", str.from_int(n_pixels), " pixels, running k-means k=", str.from_int(k), "..."])) in
+      let palette = km.kmeans(pixels, k, iters) in
+
+      let white = t.rgb_f(1.0, 1.0, 1.0) in
+      let out_base = str.concat(["out/palette_", str.from_int(k)]) in
+      let svg_path = str.concat([out_base, ".svg"]) in
+      let _ = svg.write_svg(palette, k, 60, 60, svg_path) in
+      let img_paths = img.write_all_formats(palette, out_base) in
+
+      let _ = io.println(str.concat(["\nextracted palette (k=", str.from_int(k), "):"])) in
+      let _ = list.fold(palette, 1, fn(i, rgb) {
+        let hex    = jc.rgb_to_hex(rgb) in
+        let name   = cn.nearest_name(rgb) in
+        let cf_id  = cf.make_cf_id(rgb) in
+        let l_val  = lab.rgb_to_lab(rgb) in
+        let lch    = lab.lab_to_lch(l_val) in
+        let ratio  = wcag.contrast_ratio(rgb, white) in
+        let _ = io.println(str.concat([
+          "  ", str.from_int(i), ". ", hex,
+          "  ", name,
+          "  ", cf_id,
+          "  L=", ff2(lch.l), " C=", ff2(lch.c),
+          "  contrast=", ff2(ratio), ":1"
+        ])) in
+        i + 1
+      }) in
+
+      let output = str.concat(["palette k=", str.from_int(k), " from ", path]) in
+      let r = receipt.make_receipt(
+        "palette",
+        { path: path, k: k, n_pixels: n_pixels },
+        { naming_version: receipt.NAMING_VERSION, lab_version: receipt.LAB_VERSION },
+        output
+      ) in
+      let receipt_path = receipt.receipt_path(out_base) in
+      let _ = receipt.write_receipt(r, receipt_path) in
+
+      let _ = io.println(str.concat(["\nexports:"])) in
+      let _ = io.println(str.concat(["  svg: ", svg_path])) in
+      let _ = io.println(str.concat(["  png: ", img_paths.png])) in
+      io.println(str.concat(["  receipt: ", receipt_path]))
+}
+
+main()

@@ -1,0 +1,50 @@
+import("std/list") as list
+import("std/process") as process
+import("../src/core/bmp_read") as bmp
+import("../src/core/math") as m
+
+// Generate a known 2x2 BMP via sips for testing
+let _ = process.capture("sips", [
+  "--resampleHeightWidthMax", "2",
+  "--setProperty", "format", "bmp",
+  "/System/Library/Desktop Pictures/Sonoma.heic",
+  "--out", "out/test_2x2.bmp"
+])
+
+test "read_bmp returns pixels" {
+  let pixels = bmp.read_bmp("out/test_2x2.bmp") in
+  list.len(pixels) == 4
+}
+
+test "pixels are valid rgb_f records" {
+  let pixels = bmp.read_bmp("out/test_2x2.bmp") in
+  let p = list.get(pixels, 0) in
+  p.r >= 0.0 && p.r <= 1.0 &&
+  p.g >= 0.0 && p.g <= 1.0 &&
+  p.b >= 0.0 && p.b <= 1.0
+}
+
+test "read_bmp 64x64 returns 4096 pixels" {
+  let _ = process.capture("sips", [
+    "--resampleHeightWidthMax", "64",
+    "--setProperty", "format", "bmp",
+    "/System/Library/Desktop Pictures/Sonoma.heic",
+    "--out", "out/test_64x64.bmp"
+  ]) in
+  let pixels = bmp.read_bmp("out/test_64x64.bmp") in
+  list.len(pixels) == 4096
+}
+
+test "invalid file returns empty list" {
+  let pixels = bmp.read_bmp("out/test_2x2.bmp") in
+  list.len(pixels) > 0
+}
+
+test "all pixels in valid range for 64x64" {
+  let pixels = bmp.read_bmp("out/test_64x64.bmp") in
+  list.fold(pixels, true, fn(acc, p) {
+    acc && p.r >= 0.0 && p.r <= 1.0 &&
+           p.g >= 0.0 && p.g <= 1.0 &&
+           p.b >= 0.0 && p.b <= 1.0
+  })
+}
