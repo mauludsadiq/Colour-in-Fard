@@ -276,8 +276,8 @@ MacBook Pro, FARD v1.7.1 interpreter.
    v1.11.0  Planned  -- CF Protocol Specification v1.0 (SPEC.md)
    v2.0.0   Planned  -- Python/JS reference implementation (pip install cfid)
    v2.1.0   Complete -- pip install cfcolor (PyPI publish, live)
-    v2.2.0   Planned  -- Figma plugin
-   v3.0.0   Planned  -- ICC profile support
+    v2.2.0   Complete -- Figma plugin (read-only CF-ID lookup, registry name, WCAG contrast)
+    v3.0.0   Planned  -- ICC profile support
    v3.2.0   Planned  -- Spectral input (CF-Spectral-ID)
 
 ---
