@@ -8,6 +8,7 @@ Image-to-palette extraction. Multi-format exports. Written entirely in FARD.
 No FFI. No native dependencies. No external libraries.
 
 **7,178 lines of FARD. 269 tests, 31 suites, 0 failures.**
+**Plus: Python (cfcolor, PyPI) and JavaScript reference implementations, both verified against SPEC.md.**
 **Plus: Python reference implementation (cfid_py), 28/28 tests passing.**
 **CF Protocol Specification v1.0.0 published — CF-ID is language-independent.**
 
@@ -20,6 +21,20 @@ No FFI. No native dependencies. No external libraries.
    PyPI:      https://pypi.org/project/cfcolor/
    Repo:      https://github.com/mauludsadiq/Colour-in-Fard
 
+
+## Surfaces
+
+CF-ID is reachable from four independent surfaces, all verified against the
+same SPEC.md test vectors:
+
+| Surface | Language | Use |
+|---|---|---|
+| FARD reference implementation | FARD | source of truth, full colour engine |
+| `cfcolor` (PyPI) | Python | `pip install cfcolor`, scripting/CLI |
+| Figma plugin | JS | designer workflow, registry lookup |
+| VS Code extension | JS | hover any hex colour in any file |
+
+---
 ---
 
 ## Quickstart
@@ -292,6 +307,7 @@ MacBook Pro, FARD v1.7.1 interpreter.
     v3.2.0   Complete -- CF Historical Pigment Corpus (12 pigments, provenance, CF-Spectral-ID)
     v3.3.0   Complete -- Community Naming Layer (versioned NDJSON databases, content-hash versioning)
     v3.4.0   Complete -- ICC-calibrated CMYK (input-side: profile TRC linearisation + GCR)
+    v3.5.0   Complete -- VS Code extension (hover for CF-ID/LAB/LCH/WCAG, JS reference implementation)
     v4.0.0   Planned  -- CDN registry (K=200), CF Colour Claim Protocol, CF Protocol v2.0 / W3C
 
 ---
