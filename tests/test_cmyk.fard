@@ -1,0 +1,93 @@
+import("std/list") as list
+import("../src/core/types") as t
+import("../src/core/rgb_cmyk") as cmyk
+import("../src/core/math") as m
+
+fn close(a, b) { m.absf(a - b) < 0.01 }
+
+let black = t.rgb_f(0.0, 0.0, 0.0)
+let white = t.rgb_f(1.0, 1.0, 1.0)
+let red   = t.rgb_f(1.0, 0.0, 0.0)
+let green = t.rgb_f(0.0, 1.0, 0.0)
+let blue  = t.rgb_f(0.0, 0.0, 1.0)
+let grey  = t.rgb_f(0.5, 0.5, 0.5)
+
+test "black is K=100" {
+  let c = cmyk.rgb_to_cmyk_standard(black) in
+  close(c.k, 1.0) && close(c.c, 0.0) && close(c.m, 0.0) && close(c.y, 0.0)
+}
+
+test "white is all zero" {
+  let c = cmyk.rgb_to_cmyk_standard(white) in
+  close(c.c, 0.0) && close(c.m, 0.0) && close(c.y, 0.0) && close(c.k, 0.0)
+}
+
+test "red is C0 M100 Y100 K0" {
+  let c = cmyk.rgb_to_cmyk_standard(red) in
+  close(c.c, 0.0) && close(c.m, 1.0) && close(c.y, 1.0) && close(c.k, 0.0)
+}
+
+test "green is C100 M0 Y100 K0" {
+  let c = cmyk.rgb_to_cmyk_standard(green) in
+  close(c.c, 1.0) && close(c.m, 0.0) && close(c.y, 1.0) && close(c.k, 0.0)
+}
+
+test "blue is C100 M100 Y0 K0" {
+  let c = cmyk.rgb_to_cmyk_standard(blue) in
+  close(c.c, 1.0) && close(c.m, 1.0) && close(c.y, 0.0) && close(c.k, 0.0)
+}
+
+test "grey has K component" {
+  let c = cmyk.rgb_to_cmyk_standard(grey) in
+  c.k > 0.0
+}
+
+test "all values in range 0-1" {
+  let c = cmyk.rgb_to_cmyk_standard(t.rgb_f(0.4, 0.6, 0.2)) in
+  c.c >= 0.0 && c.c <= 1.0 &&
+  c.m >= 0.0 && c.m <= 1.0 &&
+  c.y >= 0.0 && c.y <= 1.0 &&
+  c.k >= 0.0 && c.k <= 1.0
+}
+
+test "cmyk_to_rgb roundtrip for red" {
+  let c = cmyk.rgb_to_cmyk_standard(red) in
+  let rgb = cmyk.cmyk_to_rgb(c) in
+  close(rgb.r, red.r) && close(rgb.g, red.g) && close(rgb.b, red.b)
+}
+
+test "cmyk_to_rgb roundtrip for blue" {
+  let c = cmyk.rgb_to_cmyk_standard(blue) in
+  let rgb = cmyk.cmyk_to_rgb(c) in
+  close(rgb.r, blue.r) && close(rgb.g, blue.g) && close(rgb.b, blue.b)
+}
+
+test "cmyk_to_rgb roundtrip for grey" {
+  let c = cmyk.rgb_to_cmyk_standard(grey) in
+  let rgb = cmyk.cmyk_to_rgb(c) in
+  close(rgb.r, grey.r) && close(rgb.g, grey.g) && close(rgb.b, grey.b)
+}
+
+test "white has zero ink coverage" {
+  close(cmyk.total_ink_coverage(cmyk.rgb_to_cmyk_standard(white)), 0.0)
+}
+
+test "black has 100% ink coverage" {
+  close(cmyk.total_ink_coverage(cmyk.rgb_to_cmyk_standard(black)), 100.0)
+}
+
+test "k_factor 0 produces no black" {
+  let c = cmyk.rgb_to_cmyk(grey, 0.0) in
+  close(c.k, 0.0)
+}
+
+test "percent values are integers 0-100" {
+  let c = cmyk.rgb_to_cmyk_standard(red) in
+  let p = cmyk.cmyk_to_percent(c) in
+  p.c == 0 && p.m == 100 && p.y == 100 && p.k == 0
+}
+
+test "total ink coverage for rich black under 400" {
+  let c = cmyk.rgb_to_cmyk_standard(black) in
+  cmyk.total_ink_coverage(c) <= 400.0
+}

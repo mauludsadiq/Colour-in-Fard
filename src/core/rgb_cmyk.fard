@@ -1,0 +1,93 @@
+import("std/math") as math
+import("../core/math") as m
+import("std/cast") as cast
+
+// Device-independent RGB to CMYK conversion
+// Uses linear light (sRGB gamma removed) for correct colour relationships
+// Black generation via GCR (Grey Component Replacement)
+// No ICC profile -- this is the standard device-independent transform
+// For press-accurate results, apply an ICC profile on top of these values
+
+fn srgb_to_linear(c) {
+  if c <= 0.04045
+  then c / 12.92
+  else math.pow((c + 0.055) / 1.055, 2.4)
+}
+
+// Basic RGB to CMY (no black channel)
+// All values in [0, 1]
+fn rgb_to_cmy(rgb) {
+  let r = srgb_to_linear(rgb.r) in
+  let g = srgb_to_linear(rgb.g) in
+  let b = srgb_to_linear(rgb.b) in
+  {
+    c: 1.0 - r,
+    m: 1.0 - g,
+    y: 1.0 - b
+  }
+}
+
+// Full GCR black generation
+// k_factor: 0.0 = no black (CMY only), 1.0 = maximum black extraction
+fn rgb_to_cmyk(rgb, k_factor) {
+  let cmy = rgb_to_cmy(rgb) in
+  let k_raw = m.minf(cmy.c, m.minf(cmy.m, cmy.y)) in
+  let k = k_raw * m.clampf(k_factor, 0.0, 1.0) in
+  let denom = 1.0 - k in
+  if denom < 0.0001 then
+    { c: 0.0, m: 0.0, y: 0.0, k: 1.0 }
+  else
+    {
+      c: (cmy.c - k) / denom,
+      m: (cmy.m - k) / denom,
+      y: (cmy.y - k) / denom,
+      k: k
+    }
+}
+
+// Standard conversion with full black generation (k_factor=1.0)
+fn rgb_to_cmyk_standard(rgb) {
+  rgb_to_cmyk(rgb, 1.0)
+}
+
+// Convert CMYK back to RGB (device-independent roundtrip)
+fn cmyk_to_rgb(cmyk) {
+  let r_lin = (1.0 - cmyk.c) * (1.0 - cmyk.k) in
+  let g_lin = (1.0 - cmyk.m) * (1.0 - cmyk.k) in
+  let b_lin = (1.0 - cmyk.y) * (1.0 - cmyk.k) in
+  let linear_to_srgb = fn(c) {
+    let cc = m.clampf(c, 0.0, 1.0) in
+    if cc <= 0.0031308
+    then 12.92 * cc
+    else 1.055 * math.pow(cc, 1.0 / 2.4) - 0.055
+  } in
+  {
+    r: linear_to_srgb(r_lin),
+    g: linear_to_srgb(g_lin),
+    b: linear_to_srgb(b_lin)
+  }
+}
+
+// Express CMYK as percentages (0-100) for display/print use
+fn cmyk_to_percent(cmyk) {
+  {
+    c: cast.int(cmyk.c * 100.0 + 0.5),
+    m: cast.int(cmyk.m * 100.0 + 0.5),
+    y: cast.int(cmyk.y * 100.0 + 0.5),
+    k: cast.int(cmyk.k * 100.0 + 0.5)
+  }
+}
+
+// Total ink coverage (TAC) -- print shops impose limits (typically 240-320%)
+fn total_ink_coverage(cmyk) {
+  (cmyk.c + cmyk.m + cmyk.y + cmyk.k) * 100.0
+}
+
+{
+  rgb_to_cmy:           rgb_to_cmy,
+  rgb_to_cmyk:          rgb_to_cmyk,
+  rgb_to_cmyk_standard: rgb_to_cmyk_standard,
+  cmyk_to_rgb:          cmyk_to_rgb,
+  cmyk_to_percent:      cmyk_to_percent,
+  total_ink_coverage:   total_ink_coverage
+}
