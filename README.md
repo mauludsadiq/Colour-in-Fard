@@ -7,7 +7,7 @@ Full 24-bit RGB universe. CIELAB, CIELCH, CIEDE2000, OKLab, OKLCH, CMYK.
 Image-to-palette extraction. Multi-format exports. Written entirely in FARD.
 No FFI. No native dependencies. No external libraries.
 
-**6,337 lines of FARD. 237 tests, 28 suites, 0 failures.**
+**6,698 lines of FARD. 246 tests, 29 suites, 0 failures.**
 **Plus: Python reference implementation (cfid_py), 28/28 tests passing.**
 **CF Protocol Specification v1.0.0 published — CF-ID is language-independent.**
 
@@ -188,6 +188,7 @@ MacBook Pro, FARD v1.7.1 interpreter.
 | `apps/icc_info.fard <profile.icc>` | Dump ICC profile: header, tags, matrix, TRC curves |
 | `apps/icc_convert.fard <hex> <src.icc> <dst.icc>` | Convert colour between ICC profiles via XYZ PCS, with CF IDs and receipt |
 | `apps/spectral.fard <reflectance-csv\|flat-value>` | Spectral reflectance (380-730nm, 10nm) -> XYZ/LAB/sRGB, CF-ID, CF-Spectral-ID |
+| `apps/pigments.fard [name]` | CF Historical Pigment Corpus -- 12 pigments with provenance, sRGB best-fit, gamut loss, CF-ID + CF-Spectral-ID |
 | `apps/palette.fard <image> [k]` | Extract k dominant colours from any image via k-means in LAB |
 | `apps/build_registry.fard [k]` | Generate CF registry: by-hex, by-id, shards, receipts |
 | `apps/build_search_index.fard [k]` | Generate registry search index |
@@ -284,6 +285,8 @@ MacBook Pro, FARD v1.7.1 interpreter.
     v2.2.0   Complete -- Figma plugin (read-only CF-ID lookup, registry name, WCAG contrast)
     v3.0.0   Complete -- ICC profile support (the print bridge)
     v3.1.0   Complete -- Spectral input / CF-Spectral-ID
+    v3.2.0   Complete -- CF Historical Pigment Corpus (12 pigments, provenance, CF-Spectral-ID)
+    v4.0.0   Planned  -- CDN registry (K=200), ICC-calibrated CMYK, community naming layer, CF Colour Claim Protocol
 
 ---
 
