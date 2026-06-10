@@ -1,0 +1,23 @@
+{
+  "name": "cf-colour-id",
+  "displayName": "CF Colour ID",
+  "description": "Hover any hex colour to see its CF-ID, LAB/LCH values, and WCAG contrast ratios -- computed offline via the CF Colour Protocol.",
+  "version": "1.0.0",
+  "publisher": "mauludsadiq",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "categories": ["Other"],
+  "keywords": ["colour", "color", "css", "design", "accessibility", "wcag"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./extension.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mauludsadiq/Colour-in-Fard"
+  },
+  "homepage": "https://github.com/mauludsadiq/Colour-in-Fard/blob/main/SPEC.md",
+  "contributes": {}
+}
