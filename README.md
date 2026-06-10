@@ -356,10 +356,11 @@ All relationships operate in LCH space -- hue rotation is perceptually uniform.
     v1.3.0  Complete -- WCAG contrast, receipt model clarified
     v1.4.0  Complete -- neon/gray naming, LAB/LCH gradient interpolation
     v1.5.0  Complete -- CF Registry v1.0.0 live (K=20, 9,261 colours)
+    v1.8.0  Complete -- CF Registry K=100 (1,030,301 colours, shard-only layout)
     v1.5.1  Complete -- web viewer, name search, search index
     v1.6.0  Complete -- colour blindness simulation
     v1.7.0  Complete -- CIEDE2000 (Sharma-verified), OKLab/OKLCH
-    v1.8.0  Planned  -- CF Registry K=255 (full 16.7M colour identity space)
+
     v1.9.0  Planned  -- CMYK conversion, ICC profile support
     v2.0.0  Planned  -- image-to-palette extraction with CF IDs
 
