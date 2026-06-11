@@ -1,0 +1,77 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("../src/core/rgb_lab") as lab
+
+// Note: apps/similar.fard runs main() at top level via cli.args(), so we
+// can't import it directly as a library. Instead, test the pure helper
+// logic by re-deriving small pieces here against a fixture shard.
+
+import("std/fs") as fs
+import("std/json") as json
+
+fn lab_record(arr) {
+  { l: cast.float(list.get(arr, 0)), a: cast.float(list.get(arr, 1)), b: cast.float(list.get(arr, 2)) }
+}
+
+let FIXTURE = "tests/fixtures/test_shard.ndjson"
+
+test "fixture shard has 3 entries" {
+  let content = fs.read_text(FIXTURE) in
+  let lines = list.filter(str.split(content, "\n"), fn(l) { str.len(l) > 0 }) in
+  list.len(lines) == 3
+}
+
+test "CIE76 distance from #aa0000 to #ab0000 is small" {
+  let content = fs.read_text(FIXTURE) in
+  let lines = list.filter(str.split(content, "\n"), fn(l) { str.len(l) > 0 }) in
+  let e0 = json.decode(list.get(lines, 0)) in
+  let e1 = json.decode(list.get(lines, 1)) in
+  let d = lab.delta_e(lab_record(e0.lab), lab_record(e1.lab)) in
+  d < 1.0
+}
+
+test "CIE76 distance from #aa0000 to #000000 is large" {
+  let content = fs.read_text(FIXTURE) in
+  let lines = list.filter(str.split(content, "\n"), fn(l) { str.len(l) > 0 }) in
+  let e0 = json.decode(list.get(lines, 0)) in
+  let e2 = json.decode(list.get(lines, 2)) in
+  let d = lab.delta_e(lab_record(e0.lab), lab_record(e2.lab)) in
+  d > 30.0
+}
+
+fn insert_top_k(top, item, k) {
+  let n = list.len(top) in
+  if n < k then
+    let idx = list.fold(list.range(0, n), n, fn(acc, i) {
+      if acc == n && item.dist < list.get(top, i).dist then i else acc
+    }) in
+    list.concat([list.take(top, idx), [item], list.drop(top, idx)])
+  else
+    if item.dist >= list.get(top, k - 1).dist then top
+    else
+      let idx = list.fold(list.range(0, k), k, fn(acc, i) {
+        if acc == k && item.dist < list.get(top, i).dist then i else acc
+      }) in
+      list.take(list.concat([list.take(top, idx), [item], list.drop(top, idx)]), k)
+}
+
+test "insert_top_k maintains sorted order" {
+  let top0 = [] in
+  let top1 = insert_top_k(top0, { hex: "#a", dist: 5.0 }, 3) in
+  let top2 = insert_top_k(top1, { hex: "#b", dist: 1.0 }, 3) in
+  let top3 = insert_top_k(top2, { hex: "#c", dist: 3.0 }, 3) in
+  list.get(top3, 0).hex == "#b" &&
+  list.get(top3, 1).hex == "#c" &&
+  list.get(top3, 2).hex == "#a"
+}
+
+test "insert_top_k respects k limit" {
+  let top = list.fold([5.0, 1.0, 3.0, 0.5, 2.0], [], fn(acc, d) {
+    insert_top_k(acc, { hex: "x", dist: d }, 3)
+  }) in
+  list.len(top) == 3 &&
+  list.get(top, 0).dist == 0.5 &&
+  list.get(top, 1).dist == 1.0 &&
+  list.get(top, 2).dist == 2.0
+}

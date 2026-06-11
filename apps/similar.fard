@@ -1,0 +1,158 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/io") as io
+import("std/cli") as cli
+import("std/json") as json
+import("std/fs") as fs
+import("../src/core/rgb_lab") as lab
+import("../src/core/cf_id") as cf
+
+// CF Registry Similarity Search
+//
+// Given a hex colour, find similar colours in the K=100 registry using
+// CIE76 (Euclidean LAB distance) over precomputed registry entries.
+//
+// By default, scans only the registry shard whose R-channel value is
+// closest to the target's R-channel (~10,000 entries, ~2 seconds). This
+// finds genuinely similar colours for almost any target, since the K=100
+// registry's R-step (~2.55) is small relative to typical similarity
+// thresholds.
+//
+// Pass --full to scan all ~101 shards (~1,030,301 entries, several
+// minutes) for an exhaustive search.
+//
+// Usage:
+//   similar <hex> --nearest <k> [--full]
+//   similar <hex> --within <delta_e76> [--full]
+
+fn ff3(f) { str.from_float(cast.float(cast.int(f * 1000.0 + 0.5)) / 1000.0) }
+
+fn hex_digit_val(c) {
+  if c == "0" then 0 else if c == "1" then 1 else if c == "2" then 2
+  else if c == "3" then 3 else if c == "4" then 4 else if c == "5" then 5
+  else if c == "6" then 6 else if c == "7" then 7 else if c == "8" then 8
+  else if c == "9" then 9
+  else if c == "a" || c == "A" then 10
+  else if c == "b" || c == "B" then 11
+  else if c == "c" || c == "C" then 12
+  else if c == "d" || c == "D" then 13
+  else if c == "e" || c == "E" then 14
+  else 15
+}
+
+fn hex2_to_int(s) {
+  hex_digit_val(str.slice(s, 0, 1)) * 16 + hex_digit_val(str.slice(s, 1, 2))
+}
+
+fn hex_to_rgb(hex_str) {
+  let h = if str.starts_with(hex_str, "#") then str.slice(hex_str, 1, str.len(hex_str)) else hex_str in
+  {
+    r: cast.float(hex2_to_int(str.slice(h, 0, 2))) / 255.0,
+    g: cast.float(hex2_to_int(str.slice(h, 2, 4))) / 255.0,
+    b: cast.float(hex2_to_int(str.slice(h, 4, 6))) / 255.0
+  }
+}
+
+fn lab_record(arr) {
+  { l: cast.float(list.get(arr, 0)), a: cast.float(list.get(arr, 1)), b: cast.float(list.get(arr, 2)) }
+}
+
+fn shard_dir() { "docs/registry/shards" }
+
+fn shard_names() {
+  list.filter(fs.read_dir(shard_dir()), fn(n) { str.ends_with(n, ".ndjson") })
+}
+
+// Find the shard whose R-channel hex value is closest to target_r (0-255 int)
+fn nearest_shard(target_r) {
+  let names = shard_names() in
+  let result = list.fold(names, null, fn(acc, n) {
+    let r2 = str.slice(n, 0, 2) in
+    let r_val = hex2_to_int(r2) in
+    let d = if r_val > target_r then r_val - target_r else target_r - r_val in
+    if acc == null || d < acc.dist then { name: n, dist: d } else acc
+  }) in
+  result.name
+}
+
+// Insert item into a sorted-ascending list of size <= k by .dist
+fn insert_top_k(top, item, k) {
+  let n = list.len(top) in
+  if n < k then
+    let idx = list.fold(list.range(0, n), n, fn(acc, i) {
+      if acc == n && item.dist < list.get(top, i).dist then i else acc
+    }) in
+    list.concat([list.take(top, idx), [item], list.drop(top, idx)])
+  else
+    if item.dist >= list.get(top, k - 1).dist then top
+    else
+      let idx = list.fold(list.range(0, k), k, fn(acc, i) {
+        if acc == k && item.dist < list.get(top, i).dist then i else acc
+      }) in
+      list.take(list.concat([list.take(top, idx), [item], list.drop(top, idx)]), k)
+}
+
+fn scan_shard(path, target_lab, exclude_hex) {
+  let content = fs.read_text(path) in
+  let lines = list.filter(str.split(content, "\n"), fn(l) { str.len(l) > 0 }) in
+  list.fold(lines, [], fn(acc, line) {
+    let entry = json.decode(line) in
+    if entry.hex == exclude_hex then acc else
+    let entry_lab = lab_record(entry.lab) in
+    let d = lab.delta_e(target_lab, entry_lab) in
+    list.append(acc, { hex: entry.hex, cf_id: entry.cf_id, name: entry.nearest_name, dist: d })
+  })
+}
+
+fn main() {
+  let args = cli.args() in
+  if list.len(args) < 3 then
+    let _ = io.println("usage:") in
+    let _ = io.println("  similar <hex> --nearest <k> [--full]") in
+    io.println("  similar <hex> --within <delta_e76> [--full]")
+  else
+    let hex_in = list.get(args, 0) in
+    let mode   = list.get(args, 1) in
+    let param  = cast.float(list.get(args, 2)) in
+    let full   = list.len(args) > 3 && list.get(args, 3) == "--full" in
+
+    let rgb = hex_to_rgb(hex_in) in
+    let target_lab = lab.rgb_to_lab(rgb) in
+    let cf_id_target = cf.make_cf_id(rgb) in
+    let target_hex = str.lower(hex_in) in
+    let target_r = cast.int(rgb.r * 255.0 + 0.5) in
+
+    let _ = io.println("") in
+    let _ = io.println(str.concat(["target: ", target_hex, "  ", cf_id_target])) in
+
+    let shards_to_scan =
+      if full then list.map(shard_names(), fn(n) { str.concat([shard_dir(), "/", n]) })
+      else [str.concat([shard_dir(), "/", nearest_shard(target_r)])] in
+
+    let _ = if full
+      then io.println(str.concat(["scanning all ", str.from_int(list.len(shards_to_scan)), " shards (this will take several minutes)..."]))
+      else io.println(str.concat(["scanning nearest shard: ", list.get(shards_to_scan, 0)])) in
+
+    let results = list.fold(shards_to_scan, [], fn(acc, path) {
+      list.concat([acc, scan_shard(path, target_lab, target_hex)])
+    }) in
+
+    if mode == "--nearest" then
+      let k = cast.int(param) in
+      let top = list.fold(results, [], fn(acc, item) { insert_top_k(acc, item, k) }) in
+      let _ = io.println(str.concat(["\n", str.from_int(list.len(top)), " nearest colours (CIE76):"])) in
+      list.fold(top, 0, fn(_, r) {
+        io.println(str.concat(["  ", r.hex, "  ", r.cf_id, "  ", r.name, "  (dE76=", ff3(r.dist), ")"]))
+      })
+    else if mode == "--within" then
+      let matches = list.filter(results, fn(r) { r.dist < param }) in
+      let _ = io.println(str.concat(["\n", str.from_int(list.len(matches)), " colours within dE76 < ", ff3(param), ":"])) in
+      list.fold(matches, 0, fn(_, r) {
+        io.println(str.concat(["  ", r.hex, "  ", r.cf_id, "  ", r.name, "  (dE76=", ff3(r.dist), ")"]))
+      })
+    else
+      io.println(str.concat(["unknown mode: ", mode, " (expected --within or --nearest)"]))
+}
+
+main()
