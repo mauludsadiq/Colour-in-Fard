@@ -9,7 +9,7 @@ colour engine, a public registry of over a million identities, and the
 tooling that puts colour identity directly into design and development
 workflows.
 
-Written entirely in FARD -- 7,567 lines, 281 tests, zero failures, no FFI,
+Written entirely in FARD -- 8,971 lines, 344 tests, zero failures, no FFI,
 no external libraries.
 
 ---
@@ -94,6 +94,20 @@ historical pigments:
     Vermilion (Cinnabar) -- HgS, used since antiquity
     measured LAB (D65): L=59.5 a=47.1 b=55.2
     sRGB best fit: #ea682d  (dE76=0.11, in gamut)
+
+Find colours near a given colour in the registry, generate an HCT tonal
+palette, and see how a colour shifts under a different light source:
+
+    fardrun run --program apps/similar.fard --out out/run -- "#cc0000" "--nearest" "5"
+    #cc0300  CF-CC0300-8E5E6876  scarlet  (dE76=0.26)
+
+    fardrun run --program apps/hct_palette.fard --out out/run -- "#7B3F00"
+    seed: hue=56.31  chroma=42.15  tone=33.49
+    T50  #ab672b  hue=56.88  chroma=40.86  tone=50
+
+    fardrun run --program apps/multi_illuminant.fard --out out/run -- "0.5"
+    under D65:           #bbbcbb  L=76.069 a=-0.047 b=0.033
+    under Illuminant A:  #f6ac5f  L=76.069 a=19.695 b=49.636
 
 Look up a colour's name from any versioned naming database:
 
@@ -221,7 +235,7 @@ with a full CF profile.
 
 ## Validation
 
-281 tests, 32 suites, 0 failures, including:
+344 tests, 38 suites, 0 failures, including:
 
 - All 6 Sharma 2005 CIEDE2000 canonical pairs, exact
 - All 7 SPEC-2.0.0 CF-ID test vectors, exact, across FARD, Python, and JavaScript
@@ -240,17 +254,45 @@ with a full CF profile.
 
 ---
 
+## Roadmap v4
+
+With SPEC-2.0.0 complete, ROADMAP-V4.md sets out further work in five
+phases: more colour science (Phase A, complete -- see below), more
+language ports (Rust, TypeScript/WASM, Swift, Kotlin, C++), native apps
+and pro integrations, standards/governance (W3C, reference mappings to
+Pantone/RAL/etc, conformance suite), and operational hardening.
+
+**Phase A -- additional colour science (complete):**
+
+- **CAM16 / HCT**: a colour appearance model under defined viewing
+  conditions (CF-CAM16-VC-1.0.0), and HCT (Hue, Chroma, Tone) -- the basis
+  for Material You-style dynamic theming. Tone is exact CIELAB L*.
+- **IPT / JzAzBz**: perceptually uniform spaces designed for HDR/wide-gamut
+  work, addressing CIELAB's blue-hue non-uniformity from a different angle
+  than CIEDE2000.
+- **Registry similarity search**: "what's near this colour?" against the
+  1,030,301-entry registry (`apps/similar.fard`).
+- **CF-Spectral-ID-2.0**: expanded spectral sampling at 5nm/71 samples
+  (vs v1.0's 10nm/36 samples), explicitly parallel and both-valid alongside
+  CF-Spectral-ID-1.0.0.
+- **Multi-illuminant CF-ID**: CF-ID under CIE Illuminant A (incandescent),
+  computed analytically, plus a metamerism index for detecting when two
+  D65-metamers diverge under a different light source.
+
 ## What's Next
 
 The protocol and reference implementation are complete and self-consistent.
-Two directions remain open, both intentionally left for the community
-rather than this repo:
+Beyond Phase A, the rest of ROADMAP-V4.md is intentionally left for the
+community:
 
 - **Scale**: a CDN-hosted registry covering more of the 16.7 million
   possible colours (the current registry covers just over 1 million).
 - **Recognition**: CF-ID becomes a standard the way any open format does
   -- by being used. SPEC-2.0.md is written in the format a W3C Community
   Group would expect (see w3c/SUBMISSION.md for what that step involves).
+- **More languages and apps**: Rust, TypeScript/WASM, Swift, Kotlin, C++
+  ports, native desktop/mobile apps, and pro tool integrations (see
+  ROADMAP-V4.md Phases B and C).
 
 Contributions welcome: additional naming databases, measured (rather than
 representative) pigment spectra with citations, additional language
