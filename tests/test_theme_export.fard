@@ -46,3 +46,11 @@ test "dark scheme's all_roles differ from light scheme's for primary" {
   let dp = list.get(dark, 0) in
   lp.role.hex != dp.role.hex
 }
+
+test "all_roles entries have uppercase hex (matching cf_id.rgb_to_hex6)" {
+  let scheme = theme.build_scheme(SEED, false) in
+  let roles = theme.all_roles(scheme) in
+  list.fold(roles, true, fn(acc, entry) {
+    acc && !str.contains(entry.role.hex, "a") && !str.contains(entry.role.hex, "f")
+  })
+}
