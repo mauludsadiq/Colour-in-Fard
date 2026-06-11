@@ -146,9 +146,10 @@ against the same test vectors in SPEC-2.0.md:
 | cfcolor-wasm | WASM (via Rust) | ~74KB, browser-native CF-ID computation |
 | CFColor (Swift) | Swift | zero 3rd-party deps (CryptoKit), SPM package |
 | cfcolor (C++) | C++17 | header-only, zero deps, embeddable via C ABI |
+| cfcolor (Kotlin) | Kotlin | zero 3rd-party deps (java.security.MessageDigest), CLI |
 
-Seven independent implementations (FARD, Python, Rust, TypeScript, WASM,
-Swift, C++) all agree on every SPEC-2.0.md test vector.
+Eight independent implementations (FARD, Python, Rust, TypeScript, WASM,
+Swift, C++, Kotlin) all agree on every SPEC-2.0.md test vector.
 
     from cfcolor import from_hex
     from_hex("#7B3F00")   # "CF-7B3F00-EA262463"
@@ -280,8 +281,11 @@ hardening (Phase E).
   package, CLI -- a prerequisite for any future iOS/macOS app.
 - **C++** (cfid_cpp): header-only C++17, zero dependencies, embeddable via
   C ABI in native creative-tool plugins.
-- **Kotlin**: deferred -- no JDK/kotlinc available in this environment.
-  The Swift implementation documents the reference for a future port.
+- **Kotlin** (cfid_kotlin): zero third-party deps via
+  java.security.MessageDigest (same approach as Swift's CryptoKit), built
+  and tested with bare kotlinc/java (no Gradle/JUnit), CLI. Together with
+  cfid_swift, completes the iOS/Android prerequisite pair (Phase C.5).
+  This completes Phase B.3 and, for available toolchains, all of Phase B.
 
 **Phase D -- standards and ecosystem (partial, no-new-infrastructure items complete):**
 
