@@ -1,0 +1,22 @@
+import("../core/cam16") as cam16
+import("../core/rgb_lab") as lab
+
+// HCT (Hue, Chroma, Tone)
+//
+// Tone is CIELAB L* -- exact, and already part of CF-ID-1.0.0.
+// Hue and Chroma are from CAM16 (see cam16.fard for viewing conditions).
+//
+// HCT is the basis for "tonal palettes": fixing hue and chroma while
+// varying tone produces a perceptually even lightness ramp, the
+// foundation of Material You-style dynamic theming.
+
+fn rgb_to_hct(rgb) {
+  let xyz = lab.rgb_to_xyz(rgb) in
+  let cam = cam16.xyz_to_cam16(xyz) in
+  let l   = lab.rgb_to_lab(rgb) in
+  { hue: cam.h, chroma: cam.c, tone: l.l }
+}
+
+{
+  rgb_to_hct: rgb_to_hct
+}

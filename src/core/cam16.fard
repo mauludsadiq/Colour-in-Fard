@@ -1,0 +1,131 @@
+import("std/math") as math
+import("../core/math") as m
+
+// CAM16 forward transform (XYZ -> J, C, h) -- "Colour in FARD" default
+// viewing conditions.
+//
+// CAM16 (CIECAM16) models how a colour appears under specific viewing
+// conditions: surround, background, and adapting luminance. Unlike
+// CIELAB, it accounts for chromatic adaptation and surround effects, and
+// is the basis for Google's HCT colour space (used in Material You
+// dynamic theming).
+//
+// CF default viewing conditions (versioned -- see CAM16_VIEWING_CONDITIONS):
+//   whitepoint: D65 (Xw=95.047, Yw=100, Zw=108.883)
+//   surround:   "average" (F=1.0, c=0.69, Nc=1.0)
+//   La (adapting luminance): 64 cd/m^2
+//   Yb (background luminance factor): 20
+//
+// These match commonly-used CAM16/HCT defaults but are not guaranteed to
+// be bit-identical to any specific third-party implementation; the
+// numeric tone (L*) component of HCT is exact (it is CIELAB L*, already
+// part of CF-ID-1.0.0), so HCT-based tonal palettes are reproducible
+// regardless of CAM16 constant choices.
+
+let CAM16_VIEWING_CONDITIONS = "CF-CAM16-VC-1.0.0"
+
+let WHITE_X = 95.047
+let WHITE_Y = 100.0
+let WHITE_Z = 108.883
+
+let SURROUND_F  = 1.0
+let SURROUND_C  = 0.69
+let SURROUND_NC = 1.0
+let LA = 64.0
+let YB = 20.0
+
+// CAT16 matrix (XYZ -> RGB cone responses)
+fn m16_apply(x, y, z) {
+  {
+    r:  0.401288 * x + 0.650173 * y - 0.051461 * z,
+    g: -0.250268 * x + 1.204414 * y + 0.045854 * z,
+    b: -0.002079 * x + 0.048952 * y + 0.953127 * z
+  }
+}
+
+// Sign-preserving power: f(x) = sign(x) * |x|^p
+fn spow(x, p) {
+  if x >= 0.0 then math.pow(x, p)
+  else 0.0 - math.pow(0.0 - x, p)
+}
+
+// Hyperbolic post-adaptation non-linearity
+fn adapt_response(x, fl) {
+  let t = spow(fl * x / 100.0, 0.42) in
+  if t >= 0.0 then 400.0 * t / (t + 27.13) + 0.1
+  else 400.0 * (0.0 - spow(0.0 - fl * x / 100.0, 0.42)) / (spow(0.0 - fl * x / 100.0, 0.42) + 27.13) + 0.1
+}
+
+// XYZ (0-100 scale) -> CAM16 {J, C, h}
+// J: lightness (0=black, ~100=white)
+// C: chroma (0=achromatic)
+// h: hue angle in degrees [0,360)
+fn xyz_to_cam16(xyz) {
+  let rgb  = m16_apply(xyz.x, xyz.y, xyz.z) in
+  let rgbw = m16_apply(WHITE_X, WHITE_Y, WHITE_Z) in
+
+  let d = m.clampf(
+    SURROUND_F * (1.0 - (1.0 / 3.6) * math.exp((0.0 - LA - 42.0) / 92.0)),
+    0.0, 1.0
+  ) in
+
+  // Per-channel adaptation factor and adapted responses
+  let dr = d * (WHITE_Y / rgbw.r) + 1.0 - d in
+  let dg = d * (WHITE_Y / rgbw.g) + 1.0 - d in
+  let db = d * (WHITE_Y / rgbw.b) + 1.0 - d in
+
+  let rc  = dr * rgb.r in
+  let gc  = dg * rgb.g in
+  let bc  = db * rgb.b in
+
+  let rcw = dr * rgbw.r in
+  let gcw = dg * rgbw.g in
+  let bcw = db * rgbw.b in
+
+  // Luminance-level adaptation factor FL
+  let k  = 1.0 / (5.0 * LA + 1.0) in
+  let fl = 0.2 * math.pow(k, 4.0) * (5.0 * LA)
+         + 0.1 * math.pow(1.0 - math.pow(k, 4.0), 2.0) * math.pow(5.0 * LA, 1.0 / 3.0) in
+
+  let n   = YB / WHITE_Y in
+  let z   = 1.48 + math.sqrt(n) in
+  let nbb = 0.725 * math.pow(1.0 / n, 0.2) in
+
+  // Post-adaptation cone responses (sample and white)
+  let ra = adapt_response(rc, fl) in
+  let ga = adapt_response(gc, fl) in
+  let ba = adapt_response(bc, fl) in
+
+  let raw = adapt_response(rcw, fl) in
+  let gaw = adapt_response(gcw, fl) in
+  let baw = adapt_response(bcw, fl) in
+
+  // Opponent colour dimensions
+  let a_dim = ra - (12.0 * ga) / 11.0 + ba / 11.0 in
+  let b_dim = (ra + ga - 2.0 * ba) / 9.0 in
+
+  let h_rad = math.atan2(b_dim, a_dim) in
+  let h_deg = m.mod360(h_rad * 180.0 / 3.14159265358979) in
+
+  // Achromatic responses
+  let achroma  = (2.0 * ra  + ga  + 0.05 * ba  - 0.305) * nbb in
+  let achromaw = (2.0 * raw + gaw + 0.05 * baw - 0.305) * nbb in
+
+  let j = if achromaw == 0.0 then 0.0
+          else 100.0 * math.pow(m.maxf(achroma / achromaw, 0.0), SURROUND_C * z) in
+
+  // Chroma
+  let et = 0.25 * (math.cos(h_rad + 2.0) + 3.8) in
+  let denom = ra + ga + 1.05 * ba in
+  let t = if denom == 0.0 then 0.0
+          else (50000.0 / 13.0) * SURROUND_NC * nbb * et * math.sqrt(a_dim * a_dim + b_dim * b_dim) / denom in
+
+  let c = math.pow(m.absf(t), 0.9) * math.sqrt(j / 100.0) * math.pow(1.64 - math.pow(0.29, n), 0.73) in
+
+  { j: j, c: c, h: h_deg }
+}
+
+{
+  CAM16_VIEWING_CONDITIONS: CAM16_VIEWING_CONDITIONS,
+  xyz_to_cam16:             xyz_to_cam16
+}

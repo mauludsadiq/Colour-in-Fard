@@ -1,0 +1,106 @@
+import("std/list") as list
+import("../src/core/cam16") as cam16
+import("../src/core/hct") as hct
+import("../src/core/types") as t
+import("../src/core/rgb_lab") as lab
+import("../src/core/math") as m
+
+test "black has J=0" {
+  let cam = cam16.xyz_to_cam16({ x: 0.0, y: 0.0, z: 0.0 }) in
+  cam.j == 0.0
+}
+
+test "black has C=0" {
+  let cam = cam16.xyz_to_cam16({ x: 0.0, y: 0.0, z: 0.0 }) in
+  cam.c == 0.0
+}
+
+test "white (D65) has J near 100" {
+  let cam = cam16.xyz_to_cam16({ x: 95.047, y: 100.0, z: 108.883 }) in
+  m.absf(cam.j - 100.0) < 0.01
+}
+
+test "white (D65) has near-zero chroma" {
+  let cam = cam16.xyz_to_cam16({ x: 95.047, y: 100.0, z: 108.883 }) in
+  cam.c < 2.0
+}
+
+test "J increases monotonically for greys" {
+  let xyz_at = fn(s) { { x: 95.047 * s, y: 100.0 * s, z: 108.883 * s } } in
+  let j1 = cam16.xyz_to_cam16(xyz_at(0.1)).j in
+  let j2 = cam16.xyz_to_cam16(xyz_at(0.3)).j in
+  let j3 = cam16.xyz_to_cam16(xyz_at(0.6)).j in
+  let j4 = cam16.xyz_to_cam16(xyz_at(1.0)).j in
+  j1 < j2 && j2 < j3 && j3 < j4
+}
+
+test "red has chroma significantly above zero" {
+  let xyz = lab.rgb_to_xyz(t.rgb_f(1.0, 0.0, 0.0)) in
+  let cam = cam16.xyz_to_cam16(xyz) in
+  cam.c > 30.0
+}
+
+test "red hue is in red/orange range (0-60 degrees)" {
+  let xyz = lab.rgb_to_xyz(t.rgb_f(1.0, 0.0, 0.0)) in
+  let cam = cam16.xyz_to_cam16(xyz) in
+  cam.h >= 0.0 && cam.h < 60.0
+}
+
+test "green hue is in green range (100-180 degrees)" {
+  let xyz = lab.rgb_to_xyz(t.rgb_f(0.0, 1.0, 0.0)) in
+  let cam = cam16.xyz_to_cam16(xyz) in
+  cam.h >= 100.0 && cam.h < 180.0
+}
+
+test "blue hue is in blue/purple range (240-330 degrees)" {
+  let xyz = lab.rgb_to_xyz(t.rgb_f(0.0, 0.0, 1.0)) in
+  let cam = cam16.xyz_to_cam16(xyz) in
+  cam.h >= 240.0 && cam.h < 330.0
+}
+
+test "all hues are in [0,360)" {
+  let colours = [
+    t.rgb_f(1.0, 0.0, 0.0), t.rgb_f(0.0, 1.0, 0.0), t.rgb_f(0.0, 0.0, 1.0),
+    t.rgb_f(1.0, 1.0, 0.0), t.rgb_f(0.0, 1.0, 1.0), t.rgb_f(1.0, 0.0, 1.0),
+    t.rgb_f(0.5, 0.3, 0.7)
+  ] in
+  list.fold(colours, true, fn(acc, rgb) {
+    let xyz = lab.rgb_to_xyz(rgb) in
+    let cam = cam16.xyz_to_cam16(xyz) in
+    acc && cam.h >= 0.0 && cam.h < 360.0
+  })
+}
+
+// --- HCT ---
+
+test "hct tone equals CIELAB L for red" {
+  let h = hct.rgb_to_hct(t.rgb_f(1.0, 0.0, 0.0)) in
+  m.absf(h.tone - 53.241) < 0.01
+}
+
+test "hct tone equals CIELAB L for sienna" {
+  let h = hct.rgb_to_hct(t.rgb_f(123.0/255.0, 63.0/255.0, 0.0)) in
+  m.absf(h.tone - 33.493) < 0.01
+}
+
+test "hct tone for black is 0" {
+  let h = hct.rgb_to_hct(t.rgb_f(0.0, 0.0, 0.0)) in
+  h.tone == 0.0
+}
+
+test "hct tone for white is 100" {
+  let h = hct.rgb_to_hct(t.rgb_f(1.0, 1.0, 1.0)) in
+  m.absf(h.tone - 100.0) < 0.001
+}
+
+test "hct chroma for grey is low" {
+  let h = hct.rgb_to_hct(t.rgb_f(0.5, 0.5, 0.5)) in
+  h.chroma < 5.0
+}
+
+test "hct hue and chroma match cam16 directly for red" {
+  let h = hct.rgb_to_hct(t.rgb_f(1.0, 0.0, 0.0)) in
+  let xyz = lab.rgb_to_xyz(t.rgb_f(1.0, 0.0, 0.0)) in
+  let cam = cam16.xyz_to_cam16(xyz) in
+  h.hue == cam.h && h.chroma == cam.c
+}
