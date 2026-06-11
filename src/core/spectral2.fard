@@ -1,0 +1,133 @@
+import("std/list") as list
+import("std/cast") as cast
+import("std/json") as json
+import("std/hash") as hash
+import("std/str") as str
+import("../core/spectral") as sp1
+import("../core/rgb_lab") as lab
+import("../core/cf_id") as cf
+
+// CF-Spectral-ID-2.0 -- expanded spectral sampling
+//
+// v1.0 (spectral.fard) uses 36 samples at 10nm steps, 380-730nm.
+// v2.0 doubles the resolution to 71 samples at 5nm steps over the SAME
+// 380-730nm range. The 10nm-step CIE 1931 CMF and D65 tables (already
+// verified in v3.1.0) are linearly interpolated to produce the 5nm-step
+// tables, rather than re-transcribed from a separate source -- this
+// avoids introducing new transcription-error risk while still doubling
+// the resolution available to a reflectance curve.
+//
+// CF-Spectral-ID-1.0.0 and CF-Spectral-ID-2.0.0 are PARALLEL, both-valid
+// identity schemes: a 36-sample curve gets a v1.0 ID, a 71-sample curve
+// gets a v2.0 ID, and neither supersedes the other (per SPEC-2.0.md's
+// permanence principle, extended to spectral identities).
+
+let SAMPLE_COUNT_2 = 71
+
+// Linearly interpolate a 36-point 10nm-step array to a 71-point 5nm-step
+// array over the same 380-730nm range. Even indices (0,2,4,...,70) are
+// the original 36 points; odd indices are midpoints of adjacent pairs.
+fn interpolate_to_5nm(arr36) {
+  list.build(SAMPLE_COUNT_2, fn(j) {
+    if cast.int(j / 2) * 2 == j then
+      list.get(arr36, cast.int(j / 2))
+    else
+      let lo = list.get(arr36, cast.int((j - 1) / 2)) in
+      let hi = list.get(arr36, cast.int((j + 1) / 2)) in
+      (lo + hi) / 2.0
+  })
+}
+
+let CMF_X_2 = interpolate_to_5nm(sp1.CMF_X)
+let CMF_Y_2 = interpolate_to_5nm(sp1.CMF_Y)
+let CMF_Z_2 = interpolate_to_5nm(sp1.CMF_Z)
+let D65_2   = interpolate_to_5nm(sp1.D65)
+
+let WAVELENGTHS_2 = list.build(SAMPLE_COUNT_2, fn(j) { 380 + j * 5 })
+
+fn sample_count_2() { SAMPLE_COUNT_2 }
+fn wavelengths_2() { WAVELENGTHS_2 }
+
+// Same algorithm as spectral_to_xyz, over the 71-point tables.
+fn spectral_to_xyz_2(reflectance) {
+  let n = list.len(reflectance) in
+  let indices = list.range(0, n) in
+
+  let sum_x = list.fold(indices, 0.0, fn(acc, i) {
+    acc + list.get(reflectance, i) * list.get(D65_2, i) * list.get(CMF_X_2, i)
+  }) in
+  let sum_y = list.fold(indices, 0.0, fn(acc, i) {
+    acc + list.get(reflectance, i) * list.get(D65_2, i) * list.get(CMF_Y_2, i)
+  }) in
+  let sum_z = list.fold(indices, 0.0, fn(acc, i) {
+    acc + list.get(reflectance, i) * list.get(D65_2, i) * list.get(CMF_Z_2, i)
+  }) in
+  let k_sum = list.fold(indices, 0.0, fn(acc, i) {
+    acc + list.get(D65_2, i) * list.get(CMF_Y_2, i)
+  }) in
+  let k = 100.0 / k_sum in
+
+  { x: k * sum_x, y: k * sum_y, z: k * sum_z }
+}
+
+fn round4(x) {
+  cast.float(cast.int(x * 10000.0 + 0.5)) / 10000.0
+}
+
+fn spectral_preimage_2(reflectance) {
+  json.encode(list.map(reflectance, round4))
+}
+
+fn cf_spectral_id_2(reflectance) {
+  let preimage = spectral_preimage_2(reflectance) in
+  let hexdigest = hash.sha256_text(preimage) in
+  let hash8 = str.upper(str.slice(hexdigest, 7, 15)) in
+  str.concat(["CF-SPECTRAL2-", hash8])
+}
+
+fn make_spectral_entry_2(reflectance) {
+  let xyz = spectral_to_xyz_2(reflectance) in
+  let lab_val = lab.xyz_to_lab(xyz) in
+  let rgb = lab.xyz_to_rgb(xyz) in
+  let clamped = {
+    r: if rgb.r < 0.0 then 0.0 else if rgb.r > 1.0 then 1.0 else rgb.r,
+    g: if rgb.g < 0.0 then 0.0 else if rgb.g > 1.0 then 1.0 else rgb.g,
+    b: if rgb.b < 0.0 then 0.0 else if rgb.b > 1.0 then 1.0 else rgb.b
+  } in
+  {
+    cf_spectral_id: cf_spectral_id_2(reflectance),
+    cf_id:          cf.make_cf_id(clamped),
+    hex:            str.concat(["#", str.lower(cf.rgb_to_hex6(clamped))]),
+    lab:            [lab_val.l, lab_val.a, lab_val.b],
+    xyz:            [xyz.x, xyz.y, xyz.z],
+    out_of_gamut:   rgb.r < 0.0 || rgb.r > 1.0 || rgb.g < 0.0 || rgb.g > 1.0 || rgb.b < 0.0 || rgb.b > 1.0
+  }
+}
+
+fn flat_reflectance_2(value) {
+  list.build(SAMPLE_COUNT_2, fn(_) { value })
+}
+
+// Resample a v1.0 (36-sample, 10nm) reflectance curve up to a v2.0
+// (71-sample, 5nm) curve via the same interpolation used for the CMF/D65
+// tables. Useful for upgrading existing pigment data (src/data/pigments.fard)
+// to v2.0 without re-measurement.
+fn upsample_reflectance(reflectance36) {
+  interpolate_to_5nm(reflectance36)
+}
+
+{
+  SAMPLE_COUNT_2:       SAMPLE_COUNT_2,
+  WAVELENGTHS_2:        WAVELENGTHS_2,
+  CMF_X_2:              CMF_X_2,
+  CMF_Y_2:              CMF_Y_2,
+  CMF_Z_2:              CMF_Z_2,
+  D65_2:                D65_2,
+  sample_count_2:       sample_count_2,
+  wavelengths_2:        wavelengths_2,
+  spectral_to_xyz_2:    spectral_to_xyz_2,
+  cf_spectral_id_2:     cf_spectral_id_2,
+  make_spectral_entry_2: make_spectral_entry_2,
+  flat_reflectance_2:   flat_reflectance_2,
+  upsample_reflectance: upsample_reflectance
+}

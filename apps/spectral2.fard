@@ -1,0 +1,44 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/io") as io
+import("std/cli") as cli
+import("../src/core/spectral") as sp1
+import("../src/core/spectral2") as sp2
+
+// CF-Spectral-ID-2.0 demo: 71-sample (5nm, 380-730nm) spectral identity,
+// alongside the v1.0 36-sample (10nm) identity for comparison.
+//
+// Usage: spectral2 <flat-reflectance-value-0-to-1>
+
+fn ff3(f) { str.from_float(cast.float(cast.int(f * 1000.0 + 0.5)) / 1000.0) }
+
+fn main() {
+  let args = cli.args() in
+  if list.len(args) == 0 then
+    io.println("usage: spectral2 <flat-reflectance-value-0-to-1>")
+  else
+    let v = cast.float(list.get(args, 0)) in
+
+    let r1 = sp1.flat_reflectance(v) in
+    let r2 = sp2.flat_reflectance_2(v) in
+
+    let e1 = sp1.make_spectral_entry(r1) in
+    let e2 = sp2.make_spectral_entry_2(r2) in
+
+    let _ = io.println("") in
+    let _ = io.println(str.concat(["flat reflectance: ", ff3(v)])) in
+    let _ = io.println("") in
+    let _ = io.println(str.concat(["v1.0 (36 samples, 10nm, 380-730nm):"])) in
+    let _ = io.println(str.concat(["  cf_id:          ", e1.cf_id])) in
+    let _ = io.println(str.concat(["  cf_spectral_id: ", e1.cf_spectral_id])) in
+    let _ = io.println(str.concat(["  lab: L=", ff3(list.get(e1.lab,0)), " a=", ff3(list.get(e1.lab,1)), " b=", ff3(list.get(e1.lab,2))])) in
+    let _ = io.println("") in
+    let _ = io.println(str.concat(["v2.0 (71 samples, 5nm, 380-730nm):"])) in
+    let _ = io.println(str.concat(["  cf_id:          ", e2.cf_id])) in
+    let _ = io.println(str.concat(["  cf_spectral_id: ", e2.cf_spectral_id])) in
+    let _ = io.println(str.concat(["  lab: L=", ff3(list.get(e2.lab,0)), " a=", ff3(list.get(e2.lab,1)), " b=", ff3(list.get(e2.lab,2))])) in
+    io.println("\nBoth IDs are valid; v1.0 and v2.0 are parallel identity schemes (SPEC-2.0.md).")
+}
+
+main()

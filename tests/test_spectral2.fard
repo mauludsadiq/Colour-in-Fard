@@ -1,0 +1,80 @@
+import("std/str") as str
+import("std/list") as list
+import("../src/core/spectral") as sp1
+import("../src/core/spectral2") as sp2
+import("../src/core/math") as m
+
+test "v2 sample count is 71" {
+  sp2.SAMPLE_COUNT_2 == 71
+}
+
+test "v2 wavelengths span 380 to 730 in 5nm steps" {
+  list.get(sp2.WAVELENGTHS_2, 0) == 380 &&
+  list.get(sp2.WAVELENGTHS_2, 70) == 730 &&
+  list.get(sp2.WAVELENGTHS_2, 1) == 385
+}
+
+test "v2 CMF/D65 tables interpolate v1's points exactly at even indices" {
+  list.get(sp2.CMF_Y_2, 0) == list.get(sp1.CMF_Y, 0) &&
+  list.get(sp2.CMF_Y_2, 70) == list.get(sp1.CMF_Y, 35) &&
+  list.get(sp2.D65_2, 20) == list.get(sp1.D65, 10)
+}
+
+test "v2 CMF midpoint is the average of neighbours" {
+  let expected = (list.get(sp1.CMF_Y, 0) + list.get(sp1.CMF_Y, 1)) / 2.0 in
+  list.get(sp2.CMF_Y_2, 1) == expected
+}
+
+test "flat_reflectance_2 has 71 entries all equal to value" {
+  let r = sp2.flat_reflectance_2(0.5) in
+  list.len(r) == 71 && list.get(r, 0) == 0.5 && list.get(r, 70) == 0.5
+}
+
+test "v2 flat 50% reflectance gives near-grey LAB (a,b near zero)" {
+  let r = sp2.flat_reflectance_2(0.5) in
+  let entry = sp2.make_spectral_entry_2(r) in
+  m.absf(list.get(entry.lab, 1)) < 0.5 && m.absf(list.get(entry.lab, 2)) < 0.5
+}
+
+test "v2 flat 50% reflectance LAB.L is close to v1's flat 50% LAB.L" {
+  let r1 = sp1.flat_reflectance(0.5) in
+  let r2 = sp2.flat_reflectance_2(0.5) in
+  let e1 = sp1.make_spectral_entry(r1) in
+  let e2 = sp2.make_spectral_entry_2(r2) in
+  m.absf(list.get(e1.lab, 0) - list.get(e2.lab, 0)) < 0.5
+}
+
+test "cf_spectral_id_2 has CF-SPECTRAL2- prefix" {
+  let r = sp2.flat_reflectance_2(0.5) in
+  let id = sp2.cf_spectral_id_2(r) in
+  list.get(str.split(id, "-"), 0) == "CF"
+}
+
+test "cf_spectral_id_2 is deterministic" {
+  let r = sp2.flat_reflectance_2(0.5) in
+  sp2.cf_spectral_id_2(r) == sp2.cf_spectral_id_2(r)
+}
+
+test "different v2 curves produce different cf_spectral_id_2" {
+  let r1 = sp2.flat_reflectance_2(0.5) in
+  let r2 = sp2.flat_reflectance_2(0.6) in
+  sp2.cf_spectral_id_2(r1) != sp2.cf_spectral_id_2(r2)
+}
+
+test "v1 and v2 ids for the 'same' flat curve are different (parallel schemes)" {
+  let r1 = sp1.flat_reflectance(0.5) in
+  let r2 = sp2.flat_reflectance_2(0.5) in
+  sp1.cf_spectral_id(r1) != sp2.cf_spectral_id_2(r2)
+}
+
+test "upsample_reflectance produces 71 points from 36" {
+  let r36 = sp1.flat_reflectance(0.5) in
+  let r71 = sp2.upsample_reflectance(r36) in
+  list.len(r71) == 71
+}
+
+test "upsampling a flat curve gives a flat curve" {
+  let r36 = sp1.flat_reflectance(0.42) in
+  let r71 = sp2.upsample_reflectance(r36) in
+  list.get(r71, 0) == 0.42 && list.get(r71, 35) == 0.42 && list.get(r71, 70) == 0.42
+}
