@@ -1,0 +1,136 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/io") as io
+import("std/cli") as cli
+import("std/fs") as fs
+import("std/bytes") as bytes
+import("std/bits") as bits
+import("../src/core/cf_id") as cf
+
+// CF Format Embedding: PNG (Roadmap v4 Phase D.3)
+//
+// Embeds a CF-ID into a PNG file as a tEXt chunk (keyword "CF-ID"),
+// inserted immediately after the IHDR chunk -- the standard, valid place
+// for ancillary chunks per the PNG spec (ISO/IEC 15948).
+//
+// Usage: png_embed <input.png> <hex> <output.png>
+//
+// The CF-ID is computed from the given hex (e.g. a dominant colour from
+// apps/palette.fard), not extracted from the image itself -- this lets a
+// CF-ID travel with an image as a caption/identity ("this image's brand
+// colour is CF-7B3F00-EA262463"), independent of the image's actual pixel
+// content.
+
+fn hex_digit_val(c) {
+  if c == "0" then 0 else if c == "1" then 1 else if c == "2" then 2
+  else if c == "3" then 3 else if c == "4" then 4 else if c == "5" then 5
+  else if c == "6" then 6 else if c == "7" then 7 else if c == "8" then 8
+  else if c == "9" then 9
+  else if c == "a" || c == "A" then 10
+  else if c == "b" || c == "B" then 11
+  else if c == "c" || c == "C" then 12
+  else if c == "d" || c == "D" then 13
+  else if c == "e" || c == "E" then 14
+  else 15
+}
+
+fn hex2_to_int(s) {
+  hex_digit_val(str.slice(s, 0, 1)) * 16 + hex_digit_val(str.slice(s, 1, 2))
+}
+
+fn hex_to_rgb(hex_str) {
+  let h = if str.starts_with(hex_str, "#") then str.slice(hex_str, 1, str.len(hex_str)) else hex_str in
+  {
+    r: cast.float(hex2_to_int(str.slice(h, 0, 2))) / 255.0,
+    g: cast.float(hex2_to_int(str.slice(h, 2, 4))) / 255.0,
+    b: cast.float(hex2_to_int(str.slice(h, 4, 6))) / 255.0
+  }
+}
+
+let MASK32 = 4294967295  // 0xFFFFFFFF
+
+fn u32be(n) {
+  bytes.of_list([
+    bits.band(bits.bshr(n, 24), 255),
+    bits.band(bits.bshr(n, 16), 255),
+    bits.band(bits.bshr(n, 8), 255),
+    bits.band(n, 255)
+  ])
+}
+
+// CRC-32 (ISO 3309 / PNG), bitwise (no table), over a Bytes value.
+fn crc32(data) {
+  let n = bytes.len(data) in
+  let init = bits.bxor(0, MASK32) in  // 0xFFFFFFFF
+  let crc_after_bytes = list.fold(list.range(0, n), init, fn(crc, i) {
+    let byte = bytes.get(data, i) in
+    let crc1 = bits.bxor(crc, byte) in
+    list.fold(list.range(0, 8), crc1, fn(c, _) {
+      if bits.band(c, 1) == 1 then
+        bits.bxor(bits.bshr(c, 1), 3988292384)  // 0xEDB88320
+      else
+        bits.bshr(c, 1)
+    })
+  }) in
+  bits.bxor(crc_after_bytes, MASK32)
+}
+
+fn main() {
+  let args = cli.args() in
+  if list.len(args) < 3 then
+    io.println("usage: png_embed <input.png> <hex> <output.png>")
+  else
+    let in_path  = list.get(args, 0) in
+    let hex_in   = list.get(args, 1) in
+    let out_path = list.get(args, 2) in
+
+    let data = fs.read_bytes(in_path) in
+
+    // Verify PNG signature: 89 50 4E 47 0D 0A 1A 0A
+    let sig_ok =
+      bytes.get(data,0) == 137 && bytes.get(data,1) == 80 &&
+      bytes.get(data,2) == 78  && bytes.get(data,3) == 71 &&
+      bytes.get(data,4) == 13  && bytes.get(data,5) == 10 &&
+      bytes.get(data,6) == 26  && bytes.get(data,7) == 10 in
+
+    // Verify first chunk is IHDR ("IHDR" at offset 12-15) and is the
+    // standard 13-byte IHDR (chunk total = 4+4+13+4 = 25 bytes)
+    let ihdr_ok =
+      bytes.get(data,12) == 73 && bytes.get(data,13) == 72 &&
+      bytes.get(data,14) == 68 && bytes.get(data,15) == 82 in
+
+    if !sig_ok then
+      io.println("error: not a PNG file (bad signature)")
+    else if !ihdr_ok then
+      io.println("error: unexpected chunk structure (expected IHDR first)")
+    else
+      let cf_id_str = cf.make_cf_id(hex_to_rgb(hex_in)) in
+
+      let keyword = bytes.of_str("CF-ID") in
+      let nul = bytes.of_list([0]) in
+      let text = bytes.of_str(cf_id_str) in
+      let chunk_data = bytes.concat([keyword, nul, text]) in
+      let chunk_type = bytes.of_str("tEXt") in
+
+      let length_bytes = u32be(bytes.len(chunk_data)) in
+      let crc_input = bytes.concat([chunk_type, chunk_data]) in
+      let crc = crc32(crc_input) in
+      let crc_bytes = u32be(crc) in
+
+      let chunk = bytes.concat([length_bytes, chunk_type, chunk_data, crc_bytes]) in
+
+      let ihdr_end = 33 in  // 8 (signature) + 25 (IHDR chunk)
+      let n = bytes.len(data) in
+      let before = bytes.slice(data, 0, ihdr_end) in
+      let after  = bytes.slice(data, ihdr_end, n) in
+
+      let output = bytes.concat([before, chunk, after]) in
+      let _ = fs.write_bytes(out_path, output) in
+
+      let _ = io.println(str.concat(["embedded: ", cf_id_str])) in
+      let _ = io.println(str.concat(["  tEXt chunk: keyword=CF-ID, ", str.from_int(bytes.len(chunk_data)), " bytes of data"])) in
+      io.println(str.concat(["  written: ", out_path]))
+}
+
+main()

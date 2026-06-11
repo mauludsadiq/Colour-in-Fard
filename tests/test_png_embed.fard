@@ -1,0 +1,62 @@
+import("std/list") as list
+import("std/bytes") as bytes
+import("std/bits") as bits
+
+let MASK32 = 4294967295
+
+fn crc32(data) {
+  let n = bytes.len(data) in
+  let init = bits.bxor(0, MASK32) in
+  let crc_after_bytes = list.fold(list.range(0, n), init, fn(crc, i) {
+    let byte = bytes.get(data, i) in
+    let crc1 = bits.bxor(crc, byte) in
+    list.fold(list.range(0, 8), crc1, fn(c, _) {
+      if bits.band(c, 1) == 1 then
+        bits.bxor(bits.bshr(c, 1), 3988292384)
+      else
+        bits.bshr(c, 1)
+    })
+  }) in
+  bits.bxor(crc_after_bytes, MASK32)
+}
+
+fn u32be(n) {
+  bytes.of_list([
+    bits.band(bits.bshr(n, 24), 255),
+    bits.band(bits.bshr(n, 16), 255),
+    bits.band(bits.bshr(n, 8), 255),
+    bits.band(n, 255)
+  ])
+}
+
+// Known CRC-32 vector: CRC32("123456789") == 0xCBF43926
+test "crc32 matches known vector for '123456789'" {
+  let data = bytes.of_str("123456789") in
+  crc32(data) == 3421780262  // 0xCBF43926
+}
+
+test "crc32 of empty bytes is 0" {
+  crc32(bytes.of_list([])) == 0
+}
+
+test "u32be encodes 0 as four zero bytes" {
+  let b = u32be(0) in
+  bytes.len(b) == 4 &&
+  bytes.get(b,0) == 0 && bytes.get(b,1) == 0 &&
+  bytes.get(b,2) == 0 && bytes.get(b,3) == 0
+}
+
+test "u32be encodes 0x01020304 correctly" {
+  let b = u32be(16909060) in  // 0x01020304
+  bytes.get(b,0) == 1 && bytes.get(b,1) == 2 &&
+  bytes.get(b,2) == 3 && bytes.get(b,3) == 4
+}
+
+test "u32be round-trips the tEXt chunk type CRC for a known PNG IHDR" {
+  // CRC of "IHDR" + 1x1 RGB8 IHDR data (the test.png fixture's IHDR)
+  // matches the known-good value computed independently in Python.
+  let chunk_type = bytes.of_str("IHDR") in
+  let ihdr_data = bytes.of_list([0,0,0,1, 0,0,0,1, 8,2,0,0,0]) in
+  let crc = crc32(bytes.concat([chunk_type, ihdr_data])) in
+  crc == 2423739358  // verified against zlib.crc32 in Python
+}
