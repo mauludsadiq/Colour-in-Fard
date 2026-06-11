@@ -1,0 +1,21 @@
+{
+  "name": "cfcolor",
+  "version": "1.0.0",
+  "description": "CF-ID: deterministic colour identity (CF-Protocol-2.0.0). Pure TypeScript, zero runtime dependencies.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mauludsadiq/Colour-in-Fard"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "npm run build && node --test dist/test/index.test.js"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "typescript": "^5.5.0"
+  }
+}
