@@ -10,7 +10,9 @@ fn basic_fields(name, hex) {
     spectral_reflectance: null,
     cmyk: null,
     icc_profile: null,
-    nearest_reference: null,
+    reference_system: null,
+    reference_code: null,
+    reference_hex: null,
     provenance: { measured_by: null, organisation: null, date: null, notes: null }
   }
 }
@@ -89,7 +91,9 @@ test "claim with spectral curve includes cf_spectral_id" {
     spectral_reflectance: sp.flat_reflectance(0.5),
     cmyk: fields.cmyk,
     icc_profile: fields.icc_profile,
-    nearest_reference: fields.nearest_reference,
+    reference_system: fields.reference_system,
+    reference_code: fields.reference_code,
+    reference_hex: fields.reference_hex,
     provenance: fields.provenance
   } in
   let claim = claim_mod.make_claim(with_spectral) in
@@ -104,7 +108,9 @@ test "claim with spectral curve verifies as valid" {
     spectral_reflectance: sp.flat_reflectance(0.5),
     cmyk: fields.cmyk,
     icc_profile: fields.icc_profile,
-    nearest_reference: fields.nearest_reference,
+    reference_system: fields.reference_system,
+    reference_code: fields.reference_code,
+    reference_hex: fields.reference_hex,
     provenance: fields.provenance
   } in
   let claim = claim_mod.make_claim(with_spectral) in
@@ -120,7 +126,9 @@ test "claim with mismatched cf_spectral_id is invalid" {
     spectral_reflectance: sp.flat_reflectance(0.5),
     cmyk: fields.cmyk,
     icc_profile: fields.icc_profile,
-    nearest_reference: fields.nearest_reference,
+    reference_system: fields.reference_system,
+    reference_code: fields.reference_code,
+    reference_hex: fields.reference_hex,
     provenance: fields.provenance
   } in
   let claim = claim_mod.make_claim(with_spectral) in

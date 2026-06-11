@@ -75,6 +75,15 @@ A CF Colour Claim is a JSON object with the following fields:
   -- the claim states "our colour is approximately Pantone XYZ, at this
   perceptual distance," which is a factual statement about the claimant's
   own colour, not a reproduction of the third-party system itself.
+
+  The reference implementation (`src/core/claim.fard`,
+  `compute_nearest_reference`) computes `delta_e` automatically as
+  CIEDE2000 between the claim's colour and a caller-supplied
+  `reference_hex`, rounded to 2 decimals. The reference colour's hex value
+  itself is supplied by the caller (e.g. from their own licensed Pantone
+  data, or from any open system such as CSS named colours) -- this
+  specification and its reference implementation take no position on, and
+  include no data from, any specific third-party colour system.
 - `claim_digest` is `"sha256:" + lowercase_hex(sha256(utf8(canonical_json(claim_without_digest_field))))`,
   i.e. the SHA-256 of the canonical JSON of the entire claim with the
   `claim_digest` field itself omitted (and re-added afterward).

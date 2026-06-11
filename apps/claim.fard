@@ -11,7 +11,7 @@ fn main() {
   let args = cli.args() in
   if list.len(args) == 0 then
     let _ = io.println("usage:") in
-    let _ = io.println("  claim create <name> <hex> [out-path]") in
+    let _ = io.println("  claim create <name> <hex> [out-path] [ref-system ref-code ref-hex]") in
     io.println("  claim verify <claim.json>")
   else
     let mode = list.get(args, 0) in
@@ -24,13 +24,21 @@ fn main() {
         let hex_in  = list.get(args, 2) in
         let out_path = if list.len(args) > 3 then list.get(args, 3) else "out/claim.json" in
 
+        // Optional: claim create <name> <hex> <out.json> <ref-system> <ref-code> <ref-hex>
+        let has_reference = list.len(args) > 6 in
+        let reference_system = if has_reference then list.get(args, 4) else null in
+        let reference_code   = if has_reference then list.get(args, 5) else null in
+        let reference_hex    = if has_reference then list.get(args, 6) else null in
+
         let fields = {
           name: name,
           srgb_hex: hex_in,
           spectral_reflectance: null,
           cmyk: null,
           icc_profile: null,
-          nearest_reference: null,
+          reference_system: reference_system,
+          reference_code: reference_code,
+          reference_hex: reference_hex,
           provenance: {
             measured_by: null,
             organisation: null,
@@ -49,6 +57,9 @@ fn main() {
         let _ = io.println(str.concat(["  name:   ", claim.name])) in
         let _ = io.println(str.concat(["  hex:    ", claim.srgb_hex])) in
         let _ = io.println(str.concat(["  cf_id:  ", claim.cf_id])) in
+        let _ = if claim.nearest_reference != null then
+          io.println(str.concat(["  nearest_reference: ", claim.nearest_reference.system, " ", claim.nearest_reference.code, " (dE2000=", str.from_float(claim.nearest_reference.delta_e), ")"]))
+        else 0 in
         io.println(str.concat(["  digest: ", claim.claim_digest]))
 
     else if mode == "verify" then

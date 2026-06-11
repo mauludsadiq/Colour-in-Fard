@@ -1,0 +1,81 @@
+import("std/cast") as cast
+import("std/list") as list
+import("../src/core/claim") as claim_mod
+import("../src/core/math") as m
+
+fn fields_with_ref(name, hex, ref_system, ref_code, ref_hex) {
+  {
+    name: name,
+    srgb_hex: hex,
+    spectral_reflectance: null,
+    cmyk: null,
+    icc_profile: null,
+    reference_system: ref_system,
+    reference_code: ref_code,
+    reference_hex: ref_hex,
+    provenance: { measured_by: null, organisation: null, date: null, notes: null }
+  }
+}
+
+fn fields_no_ref(name, hex) {
+  fields_with_ref(name, hex, null, null, null)
+}
+
+test "claim without reference has nearest_reference == null" {
+  let claim = claim_mod.make_claim(fields_no_ref("Red", "#ff0000")) in
+  claim.nearest_reference == null
+}
+
+test "claim with reference computes nearest_reference" {
+  let claim = claim_mod.make_claim(fields_with_ref("Brick Red", "#b32424", "CSS Color Module Level 4", "firebrick", "#b22222")) in
+  claim.nearest_reference != null &&
+  claim.nearest_reference.system == "CSS Color Module Level 4" &&
+  claim.nearest_reference.code == "firebrick"
+}
+
+test "delta_e for near-identical colours is small" {
+  let claim = claim_mod.make_claim(fields_with_ref("Brick Red", "#b32424", "CSS Color Module Level 4", "firebrick", "#b22222")) in
+  claim.nearest_reference.delta_e < 1.0
+}
+
+test "delta_e for very different colours is large" {
+  let claim = claim_mod.make_claim(fields_with_ref("Red", "#ff0000", "Test", "blue", "#0000ff")) in
+  claim.nearest_reference.delta_e > 20.0
+}
+
+test "delta_e is zero for identical hex values" {
+  let claim = claim_mod.make_claim(fields_with_ref("Red", "#ff0000", "Test", "red", "#ff0000")) in
+  claim.nearest_reference.delta_e == 0.0
+}
+
+test "claim with nearest_reference still verifies as valid" {
+  let claim = claim_mod.make_claim(fields_with_ref("Brick Red", "#b32424", "CSS Color Module Level 4", "firebrick", "#b22222")) in
+  let result = claim_mod.verify_claim(claim) in
+  result.valid
+}
+
+test "claim with nearest_reference is tamper-detected if delta_e is altered" {
+  let claim = claim_mod.make_claim(fields_with_ref("Brick Red", "#b32424", "CSS Color Module Level 4", "firebrick", "#b22222")) in
+  let tampered = {
+    claim_version: claim.claim_version,
+    name: claim.name,
+    srgb_hex: claim.srgb_hex,
+    cf_id: claim.cf_id,
+    spectral_reflectance: claim.spectral_reflectance,
+    cf_spectral_id: claim.cf_spectral_id,
+    cmyk: claim.cmyk,
+    icc_profile: claim.icc_profile,
+    nearest_reference: { system: claim.nearest_reference.system, code: claim.nearest_reference.code, delta_e: 99.99 },
+    provenance: claim.provenance,
+    protocol_version: claim.protocol_version,
+    claim_digest: claim.claim_digest
+  } in
+  let result = claim_mod.verify_claim(tampered) in
+  !result.valid
+}
+
+test "delta_e is rounded to 2 decimals" {
+  let claim = claim_mod.make_claim(fields_with_ref("Brick Red", "#b32424", "CSS Color Module Level 4", "firebrick", "#b22222")) in
+  let de = claim.nearest_reference.delta_e in
+  m.absf(de * 100.0 - cast.float(cast.int(de * 100.0 + 0.5))) < 0.0001
+}
