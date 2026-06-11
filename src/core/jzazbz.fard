@@ -1,0 +1,85 @@
+import("std/math") as math
+
+// JzAzBz colour space (Safdar, Mokrzycki, Hardeberg, Bonnier, Atkins 2017)
+//
+// Designed for HDR/wide-gamut: perceptually uniform across a much wider
+// luminance range than CIELAB, using a PQ-based (perceptual quantizer)
+// non-linearity instead of a cube root.
+//
+// Input: XYZ on the 0-100 scale (as produced by rgb_lab.fard's
+// rgb_to_xyz), D65 white = (95.047, 100, 108.883).
+//
+// This implementation feeds normalised [0,1]-scale XYZ directly into the
+// PQ function (a common simplified/relative usage), producing a
+// self-consistent relative JzAzBz space: black -> Jz~0, achromatic greys
+// -> Az=Bz~0, white -> Jz at a fixed reference value (not exactly 1, since
+// PQ is calibrated against absolute cd/m^2 in the original paper).
+// Absolute calibration to specific reference luminances is not
+// implemented; this space is useful for relative comparisons (delta-E,
+// hue, chroma) within Colour-in-FARD.
+
+let B  = 1.15
+let G  = 0.66
+let C1 = 0.8359375
+let C2 = 18.8515625
+let C3 = 18.6875
+let N  = 0.1593017578125
+let PEXP = 134.034375
+let D  = -0.56
+let D0 = 0.000000000016295499532821566
+
+fn pq(x) {
+  let xn = math.pow(x, N) in
+  let num = C1 + C2 * xn in
+  let den = 1.0 + C3 * xn in
+  math.pow(num / den, PEXP)
+}
+
+fn xyz_to_jzazbz(xyz) {
+  let x = xyz.x / 100.0 in
+  let y = xyz.y / 100.0 in
+  let z = xyz.z / 100.0 in
+
+  let xp = B * x - (B - 1.0) * z in
+  let yp = G * y - (G - 1.0) * x in
+  let zp = z in
+
+  let l = 0.41478972 * xp + 0.579999   * yp + 0.0146480 * zp in
+  let m = -0.2015100 * xp + 1.120649   * yp + 0.0531008 * zp in
+  let s = -0.0166008 * xp + 0.264800   * yp + 0.6684799 * zp in
+
+  let lp = pq(l) in
+  let mp = pq(m) in
+  let sp = pq(s) in
+
+  let iz = 0.5 * lp + 0.5 * mp in
+  let az = 3.524000  * lp - 4.066708 * mp + 0.542708  * sp in
+  let bz = 0.199076  * lp + 1.096799 * mp - 1.295875  * sp in
+
+  let jz = ((1.0 + D) * iz) / (1.0 + D * iz) - D0 in
+
+  { jz: jz, az: az, bz: bz }
+}
+
+fn jzazbz_chroma(jab) {
+  math.sqrt(jab.az * jab.az + jab.bz * jab.bz)
+}
+
+fn jzazbz_hue(jab) {
+  let h = math.atan2(jab.bz, jab.az) * 180.0 / 3.14159265358979 in
+  if h < 0.0 then h + 360.0 else h
+}
+
+fn delta_e_jz(jab1, jab2) {
+  let dj = jab1.jz - jab2.jz in
+  let da = jab1.az - jab2.az in
+  let db = jab1.bz - jab2.bz in
+  math.sqrt(dj * dj + da * da + db * db)
+}
+
+{
+  xyz_to_jzazbz: xyz_to_jzazbz,
+  jzazbz_chroma: jzazbz_chroma,
+  jzazbz_hue:    jzazbz_hue,
+  delta_e_jz:    delta_e_jz
+}

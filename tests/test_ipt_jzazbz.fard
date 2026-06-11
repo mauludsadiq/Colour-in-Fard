@@ -1,0 +1,123 @@
+import("../src/core/ipt") as ipt
+import("../src/core/jzazbz") as jz
+import("../src/core/rgb_lab") as lab
+import("../src/core/types") as t
+import("../src/core/math") as m
+
+// --- IPT ---
+
+test "IPT black is (0,0,0)" {
+  let xyz = lab.rgb_to_xyz(t.rgb_f(0.0, 0.0, 0.0)) in
+  let p = ipt.xyz_to_ipt(xyz) in
+  p.i == 0.0 && p.p == 0.0 && p.t == 0.0
+}
+
+test "IPT white has I near 1, achromatic" {
+  let xyz = lab.rgb_to_xyz(t.rgb_f(1.0, 1.0, 1.0)) in
+  let p = ipt.xyz_to_ipt(xyz) in
+  m.absf(p.i - 1.0) < 0.005 && m.absf(p.p) < 0.01 && m.absf(p.t) < 0.01
+}
+
+test "IPT I increases monotonically for greys" {
+  let i_at = fn(v) { ipt.xyz_to_ipt(lab.rgb_to_xyz(t.rgb_f(v, v, v))).i } in
+  i_at(0.1) < i_at(0.3) && i_at(0.3) < i_at(0.6) && i_at(0.6) < i_at(1.0)
+}
+
+test "IPT chroma is near zero for grey" {
+  let xyz = lab.rgb_to_xyz(t.rgb_f(0.5, 0.5, 0.5)) in
+  let p = ipt.xyz_to_ipt(xyz) in
+  ipt.ipt_chroma(p) < 0.01
+}
+
+test "IPT chroma for red is well above zero" {
+  let xyz = lab.rgb_to_xyz(t.rgb_f(1.0, 0.0, 0.0)) in
+  let p = ipt.xyz_to_ipt(xyz) in
+  ipt.ipt_chroma(p) > 0.1
+}
+
+test "IPT hue is in [0,360) for red, green, blue" {
+  let hue_of = fn(rgb) { ipt.ipt_hue(ipt.xyz_to_ipt(lab.rgb_to_xyz(rgb))) } in
+  let hr = hue_of(t.rgb_f(1.0, 0.0, 0.0)) in
+  let hg = hue_of(t.rgb_f(0.0, 1.0, 0.0)) in
+  let hb = hue_of(t.rgb_f(0.0, 0.0, 1.0)) in
+  hr >= 0.0 && hr < 360.0 &&
+  hg >= 0.0 && hg < 360.0 &&
+  hb >= 0.0 && hb < 360.0
+}
+
+test "delta_e_ipt is zero for identical colours" {
+  let xyz = lab.rgb_to_xyz(t.rgb_f(0.5, 0.3, 0.7)) in
+  let p = ipt.xyz_to_ipt(xyz) in
+  ipt.delta_e_ipt(p, p) == 0.0
+}
+
+test "delta_e_ipt black to white is large" {
+  let pb = ipt.xyz_to_ipt(lab.rgb_to_xyz(t.rgb_f(0.0, 0.0, 0.0))) in
+  let pw = ipt.xyz_to_ipt(lab.rgb_to_xyz(t.rgb_f(1.0, 1.0, 1.0))) in
+  ipt.delta_e_ipt(pb, pw) > 0.5
+}
+
+// --- JzAzBz ---
+
+test "JzAzBz black has Jz near zero" {
+  let xyz = lab.rgb_to_xyz(t.rgb_f(0.0, 0.0, 0.0)) in
+  let j = jz.xyz_to_jzazbz(xyz) in
+  m.absf(j.jz) < 0.001
+}
+
+test "JzAzBz black is achromatic" {
+  let xyz = lab.rgb_to_xyz(t.rgb_f(0.0, 0.0, 0.0)) in
+  let j = jz.xyz_to_jzazbz(xyz) in
+  jz.jzazbz_chroma(j) < 0.001
+}
+
+test "JzAzBz white Jz is greater than black Jz" {
+  let jb = jz.xyz_to_jzazbz(lab.rgb_to_xyz(t.rgb_f(0.0, 0.0, 0.0))) in
+  let jw = jz.xyz_to_jzazbz(lab.rgb_to_xyz(t.rgb_f(1.0, 1.0, 1.0))) in
+  jw.jz > jb.jz
+}
+
+test "JzAzBz white is near-achromatic" {
+  let xyz = lab.rgb_to_xyz(t.rgb_f(1.0, 1.0, 1.0)) in
+  let j = jz.xyz_to_jzazbz(xyz) in
+  jz.jzazbz_chroma(j) < 0.01
+}
+
+test "JzAzBz grey is near-achromatic" {
+  let xyz = lab.rgb_to_xyz(t.rgb_f(0.5, 0.5, 0.5)) in
+  let j = jz.xyz_to_jzazbz(xyz) in
+  jz.jzazbz_chroma(j) < 0.01
+}
+
+test "JzAzBz Jz increases monotonically for greys" {
+  let jz_at = fn(v) { jz.xyz_to_jzazbz(lab.rgb_to_xyz(t.rgb_f(v, v, v))).jz } in
+  jz_at(0.1) < jz_at(0.3) && jz_at(0.3) < jz_at(0.6) && jz_at(0.6) < jz_at(1.0)
+}
+
+test "JzAzBz chroma for red is well above zero" {
+  let xyz = lab.rgb_to_xyz(t.rgb_f(1.0, 0.0, 0.0)) in
+  let j = jz.xyz_to_jzazbz(xyz) in
+  jz.jzazbz_chroma(j) > 0.01
+}
+
+test "JzAzBz hue is in [0,360) for primaries" {
+  let hue_of = fn(rgb) { jz.jzazbz_hue(jz.xyz_to_jzazbz(lab.rgb_to_xyz(rgb))) } in
+  let hr = hue_of(t.rgb_f(1.0, 0.0, 0.0)) in
+  let hg = hue_of(t.rgb_f(0.0, 1.0, 0.0)) in
+  let hb = hue_of(t.rgb_f(0.0, 0.0, 1.0)) in
+  hr >= 0.0 && hr < 360.0 &&
+  hg >= 0.0 && hg < 360.0 &&
+  hb >= 0.0 && hb < 360.0
+}
+
+test "delta_e_jz is zero for identical colours" {
+  let j = jz.xyz_to_jzazbz(lab.rgb_to_xyz(t.rgb_f(0.5, 0.3, 0.7))) in
+  jz.delta_e_jz(j, j) == 0.0
+}
+
+test "delta_e_jz black to white is larger than black to grey" {
+  let jb = jz.xyz_to_jzazbz(lab.rgb_to_xyz(t.rgb_f(0.0, 0.0, 0.0))) in
+  let jg = jz.xyz_to_jzazbz(lab.rgb_to_xyz(t.rgb_f(0.5, 0.5, 0.5))) in
+  let jw = jz.xyz_to_jzazbz(lab.rgb_to_xyz(t.rgb_f(1.0, 1.0, 1.0))) in
+  jz.delta_e_jz(jb, jw) > jz.delta_e_jz(jb, jg)
+}

@@ -1,0 +1,59 @@
+import("std/math") as math
+import("../core/types") as t
+
+// IPT colour space (Ebner & Fairchild, 1998)
+//
+// Designed to address CIELAB's known hue-angle non-uniformity, especially
+// for blue hues. I = lightness-like, P/T = opponent chroma channels.
+//
+// Input: XYZ on the 0-100 scale (as produced by rgb_lab.fard's
+// rgb_to_xyz), D65 white = (95.047, 100, 108.883).
+
+fn spow(x, p) {
+  if x >= 0.0 then math.pow(x, p)
+  else 0.0 - math.pow(0.0 - x, p)
+}
+
+fn xyz_to_ipt(xyz) {
+  // Normalise to 0-1 (D65 white -> approx (1,1,1) in LMS below)
+  let x = xyz.x / 100.0 in
+  let y = xyz.y / 100.0 in
+  let z = xyz.z / 100.0 in
+
+  let l =  0.4002 * x + 0.7075 * y - 0.0807 * z in
+  let m = -0.2280 * x + 1.1500 * y + 0.0612 * z in
+  let s =  0.0000 * x + 0.0000 * y + 0.9184 * z in
+
+  let lp = spow(l, 0.43) in
+  let mp = spow(m, 0.43) in
+  let sp = spow(s, 0.43) in
+
+  let i =  0.4000 * lp + 0.4000 * mp + 0.2000 * sp in
+  let p =  4.4550 * lp - 4.8510 * mp + 0.3960 * sp in
+  let tt =  0.8056 * lp + 0.3572 * mp - 1.1628 * sp in
+
+  { i: i, p: p, t: tt }
+}
+
+fn ipt_chroma(ipt) {
+  math.sqrt(ipt.p * ipt.p + ipt.t * ipt.t)
+}
+
+fn ipt_hue(ipt) {
+  let h = math.atan2(ipt.t, ipt.p) * 180.0 / 3.14159265358979 in
+  if h < 0.0 then h + 360.0 else h
+}
+
+fn delta_e_ipt(ipt1, ipt2) {
+  let di = ipt1.i - ipt2.i in
+  let dp = ipt1.p - ipt2.p in
+  let dt = ipt1.t - ipt2.t in
+  math.sqrt(di * di + dp * dp + dt * dt)
+}
+
+{
+  xyz_to_ipt:  xyz_to_ipt,
+  ipt_chroma:  ipt_chroma,
+  ipt_hue:     ipt_hue,
+  delta_e_ipt: delta_e_ipt
+}
