@@ -1,0 +1,44 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/io") as io
+import("std/cli") as cli
+import("../src/core/spectral") as sp1
+import("../src/core/multi_illuminant") as mi
+
+// CF Multi-Illuminant demo: compute CF-ID for a flat reflectance curve
+// under D65 (standard, CF-ID-1.0.0) and under Illuminant A (incandescent),
+// and report the LAB difference.
+//
+// Usage: multi_illuminant <flat-reflectance-value-0-to-1>
+
+fn ff3(f) { str.from_float(cast.float(cast.int(f * 1000.0 + 0.5)) / 1000.0) }
+
+fn main() {
+  let args = cli.args() in
+  if list.len(args) == 0 then
+    io.println("usage: multi_illuminant <flat-reflectance-value-0-to-1>")
+  else
+    let v = cast.float(list.get(args, 0)) in
+    let r = sp1.flat_reflectance(v) in
+
+    let d65_entry = sp1.make_spectral_entry(r) in
+    let a_entry = mi.cf_id_under_illuminant(r, mi.ILLUMINANT_A) in
+
+    let _ = io.println("") in
+    let _ = io.println(str.concat(["flat reflectance: ", ff3(v)])) in
+    let _ = io.println("") in
+    let _ = io.println("under D65 (CF-ID-1.0.0):") in
+    let _ = io.println(str.concat(["  cf_id: ", d65_entry.cf_id])) in
+    let _ = io.println(str.concat(["  hex:   ", d65_entry.hex])) in
+    let _ = io.println(str.concat(["  lab:   L=", ff3(list.get(d65_entry.lab,0)), " a=", ff3(list.get(d65_entry.lab,1)), " b=", ff3(list.get(d65_entry.lab,2))])) in
+    let _ = io.println("") in
+    let _ = io.println("under Illuminant A (incandescent, ~2848K):") in
+    let _ = io.println(str.concat(["  cf_id: ", a_entry.cf_id])) in
+    let _ = io.println(str.concat(["  hex:   ", a_entry.hex])) in
+    let _ = io.println(str.concat(["  lab:   L=", ff3(a_entry.lab.l), " a=", ff3(a_entry.lab.a), " b=", ff3(a_entry.lab.b)])) in
+    let _ = io.println("") in
+    io.println("Same physical surface, different CF-ID under each illuminant --\nthe basis for detecting metamerism via metamerism_index_a().")
+}
+
+main()

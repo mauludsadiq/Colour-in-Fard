@@ -1,0 +1,66 @@
+import("std/list") as list
+import("../src/core/spectral") as sp1
+import("../src/core/multi_illuminant") as mi
+import("../src/core/math") as m
+
+test "Illuminant A table has 36 entries" {
+  list.len(mi.ILLUMINANT_A) == 36
+}
+
+test "Illuminant A is normalised to 100 at 560nm" {
+  // 560nm is index 18 in WAVELENGTHS (380 + 18*10 = 560)
+  m.absf(list.get(mi.ILLUMINANT_A, 18) - 100.0) < 0.001
+}
+
+test "Illuminant A is much weaker at 380nm than at 730nm (warm/red-shifted)" {
+  let a_380 = list.get(mi.ILLUMINANT_A, 0) in
+  let a_730 = list.get(mi.ILLUMINANT_A, 35) in
+  a_380 < a_730
+}
+
+test "Illuminant A values are all positive" {
+  list.fold(mi.ILLUMINANT_A, true, fn(acc, v) { acc && v > 0.0 })
+}
+
+test "flat reflectance under D65 and under A give different cf_ids" {
+  let r = sp1.flat_reflectance(0.5) in
+  let d65_entry = sp1.make_spectral_entry(r) in
+  let a_entry = mi.cf_id_under_illuminant(r, mi.ILLUMINANT_A) in
+  d65_entry.cf_id != a_entry.cf_id
+}
+
+test "flat reflectance under Illuminant A is warmer (higher b*) than under D65" {
+  let r = sp1.flat_reflectance(0.5) in
+  let d65_entry = sp1.make_spectral_entry(r) in
+  let a_entry = mi.cf_id_under_illuminant(r, mi.ILLUMINANT_A) in
+  a_entry.lab.b > list.get(d65_entry.lab, 1) + list.get(d65_entry.lab, 2)
+}
+
+test "is_d65_metamer is true for identical curves" {
+  let r = sp1.flat_reflectance(0.5) in
+  mi.is_d65_metamer(r, r)
+}
+
+test "is_d65_metamer is false for different curves" {
+  let r1 = sp1.flat_reflectance(0.5) in
+  let r2 = sp1.flat_reflectance(0.6) in
+  !mi.is_d65_metamer(r1, r2)
+}
+
+test "metamerism_index_a is zero for identical curves" {
+  let r = sp1.flat_reflectance(0.5) in
+  mi.metamerism_index_a(r, r) == 0.0
+}
+
+test "metamerism_index_a is positive for different curves" {
+  let r1 = sp1.flat_reflectance(0.5) in
+  let r2 = sp1.flat_reflectance(0.6) in
+  mi.metamerism_index_a(r1, r2) > 0.0
+}
+
+test "cf_id_under_illuminant for black is the same CF-ID regardless of illuminant" {
+  let r = sp1.flat_reflectance(0.0) in
+  let d65_entry = sp1.make_spectral_entry(r) in
+  let a_entry = mi.cf_id_under_illuminant(r, mi.ILLUMINANT_A) in
+  d65_entry.cf_id == a_entry.cf_id
+}

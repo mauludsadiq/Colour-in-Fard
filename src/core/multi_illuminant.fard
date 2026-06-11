@@ -1,0 +1,128 @@
+import("std/list") as list
+import("std/str") as str
+import("std/math") as math
+import("../core/spectral") as sp1
+import("../core/rgb_lab") as lab
+import("../core/cf_id") as cf
+import("../core/delta_e2000") as de2000
+
+// CF Multi-Illuminant Identity (Roadmap v4 Phase A.6, partial)
+//
+// CF-ID-1.0.0 is computed under CIE Standard Illuminant D65. Two
+// physically different surfaces can match under D65 (same CF-ID) but
+// look different under another illuminant -- this is metamerism, and the
+// degree of mismatch under a second illuminant is a "metamerism index".
+//
+// This module adds CIE Standard Illuminant A (incandescent, ~2856K),
+// computed analytically via the CIE Planckian-locus formula (not
+// transcribed from a table, to avoid transcription-error risk):
+//
+//   S_A(lambda) = 100 * (560/lambda)^5
+//                 * (exp(c2/(T*560)) - 1) / (exp(c2/(T*lambda)) - 1)
+//
+// with c2 = 1.4388e7 nm*K and T = 2848K (CIE 15:2004 definition).
+//
+// NOTE on scope: Illuminant F11 (narrow-band fluorescent) is NOT
+// included. F11's SPD has sharp mercury emission spikes only a few nm
+// wide, fundamentally incompatible with the 10nm (or even 5nm) sampling
+// grids used by CF-Spectral-ID-1.0/2.0 -- representing it on this grid
+// would silently smear or miss the spikes, producing numbers that look
+// precise but aren't meaningful. Proper F11 support needs either a much
+// finer grid or a dedicated narrow-band representation, left as future
+// work rather than approximated here.
+//
+// NOTE on LAB reference white: cf_id_under_illuminant computes XYZ using
+// the GIVEN illuminant's SPD, but converts to LAB using the standard D65
+// reference white (as in CF-ID-1.0.0), NOT the given illuminant's white
+// point. This is intentional: it answers "what CF-ID does this surface's
+// XYZ-under-illuminant-X produce via the standard CF-ID pipeline", which
+// is exactly the comparison needed to detect metamerism. It is not a
+// chromatic-adaptation-corrected "appearance under X" (that would be a
+// CAM16-based computation, out of scope here).
+
+let C2 = 14388000.0  // nm*K
+let T_A = 2848.0
+
+fn illuminant_a_spd(wavelength_nm) {
+  let lam = wavelength_nm in
+  let term1 = math.pow(560.0 / lam, 5.0) in
+  let num = math.exp(C2 / (T_A * 560.0)) - 1.0 in
+  let den = math.exp(C2 / (T_A * lam)) - 1.0 in
+  100.0 * term1 * (num / den)
+}
+
+// list.map gives ints from WAVELENGTHS (e.g. 380); multiply by 1.0 for float
+fn to_f(x) { x * 1.0 }
+
+let ILLUMINANT_A = list.map(sp1.WAVELENGTHS, fn(w) {
+  illuminant_a_spd(to_f(w))
+})
+
+// Generic spectral-to-XYZ under an arbitrary illuminant table (same
+// wavelength grid as sp1.WAVELENGTHS).
+fn spectral_to_xyz_under(reflectance, illuminant) {
+  let n = list.len(reflectance) in
+  let indices = list.range(0, n) in
+
+  let sum_x = list.fold(indices, 0.0, fn(acc, i) {
+    acc + list.get(reflectance, i) * list.get(illuminant, i) * list.get(sp1.CMF_X, i)
+  }) in
+  let sum_y = list.fold(indices, 0.0, fn(acc, i) {
+    acc + list.get(reflectance, i) * list.get(illuminant, i) * list.get(sp1.CMF_Y, i)
+  }) in
+  let sum_z = list.fold(indices, 0.0, fn(acc, i) {
+    acc + list.get(reflectance, i) * list.get(illuminant, i) * list.get(sp1.CMF_Z, i)
+  }) in
+  let k_sum = list.fold(indices, 0.0, fn(acc, i) {
+    acc + list.get(illuminant, i) * list.get(sp1.CMF_Y, i)
+  }) in
+  let k = 100.0 / k_sum in
+
+  { x: k * sum_x, y: k * sum_y, z: k * sum_z }
+}
+
+// CF-ID for a reflectance curve as it would compute under a given
+// illuminant table (LAB conversion still uses the D65 reference white,
+// per the note above).
+fn cf_id_under_illuminant(reflectance, illuminant) {
+  let xyz = spectral_to_xyz_under(reflectance, illuminant) in
+  let lab_val = lab.xyz_to_lab(xyz) in
+  let rgb = lab.xyz_to_rgb(xyz) in
+  let clamped = {
+    r: if rgb.r < 0.0 then 0.0 else if rgb.r > 1.0 then 1.0 else rgb.r,
+    g: if rgb.g < 0.0 then 0.0 else if rgb.g > 1.0 then 1.0 else rgb.g,
+    b: if rgb.b < 0.0 then 0.0 else if rgb.b > 1.0 then 1.0 else rgb.b
+  } in
+  {
+    cf_id: cf.make_cf_id(clamped),
+    lab:   lab_val,
+    hex:   str.concat(["#", str.lower(cf.rgb_to_hex6(clamped))])
+  }
+}
+
+// Metamerism index: for two reflectance curves, the CIEDE2000 distance
+// between their appearances under Illuminant A. If the two curves are
+// metamers under D65 (i.e. produce the same CF-ID), a non-zero value here
+// means they are metamers ONLY under D65 -- they would look different
+// under incandescent light.
+fn metamerism_index_a(reflectance1, reflectance2) {
+  let r1 = cf_id_under_illuminant(reflectance1, ILLUMINANT_A) in
+  let r2 = cf_id_under_illuminant(reflectance2, ILLUMINANT_A) in
+  de2000.delta_e2000(r1.lab, r2.lab)
+}
+
+// Whether two curves are CF-ID metamers under D65 (same CF-ID)
+fn is_d65_metamer(reflectance1, reflectance2) {
+  let r1 = sp1.make_spectral_entry(reflectance1) in
+  let r2 = sp1.make_spectral_entry(reflectance2) in
+  r1.cf_id == r2.cf_id
+}
+
+{
+  ILLUMINANT_A:            ILLUMINANT_A,
+  illuminant_a_spd:        illuminant_a_spd,
+  spectral_to_xyz_under:   spectral_to_xyz_under,
+  cf_id_under_illuminant:  cf_id_under_illuminant,
+  metamerism_index_a:      metamerism_index_a,
+  is_d65_metamer:          is_d65_metamer
+}
