@@ -141,6 +141,14 @@ against the same test vectors in SPEC-2.0.md:
 | cfcolor (PyPI) | Python | pip install cfcolor, scripting/CLI |
 | Figma plugin | JavaScript | select a fill, see its CF-ID and registry name |
 | VS Code extension | JavaScript | hover any hex colour in any file |
+| cfcolor (Rust) | Rust | zero-dependency crate, own SHA-256, CLI |
+| cfcolor (TypeScript) | TypeScript | typed npm package, zero runtime deps |
+| cfcolor-wasm | WASM (via Rust) | ~74KB, browser-native CF-ID computation |
+| CFColor (Swift) | Swift | zero 3rd-party deps (CryptoKit), SPM package |
+| cfcolor (C++) | C++17 | header-only, zero deps, embeddable via C ABI |
+
+Seven independent implementations (FARD, Python, Rust, TypeScript, WASM,
+Swift, C++) all agree on every SPEC-2.0.md test vector.
 
     from cfcolor import from_hex
     from_hex("#7B3F00")   # "CF-7B3F00-EA262463"
@@ -257,10 +265,23 @@ with a full CF profile.
 ## Roadmap v4
 
 With SPEC-2.0.0 complete, ROADMAP-V4.md sets out further work in five
-phases: more colour science (Phase A, complete -- see below), more
-language ports (Rust, TypeScript/WASM, Swift, Kotlin, C++), native apps
-and pro integrations, standards/governance (W3C, reference mappings to
-Pantone/RAL/etc, conformance suite), and operational hardening.
+phases: more colour science (Phase A, complete), more language ports
+(Phase B, complete for available toolchains), native apps and pro
+integrations (Phase C), standards/governance (Phase D), and operational
+hardening (Phase E).
+
+**Phase B -- more language ports (complete for available toolchains):**
+
+- **Rust** (cfid_rs): zero dependencies, own SHA-256, CLI.
+- **TypeScript** (cfid_ts): zero runtime deps, typed, tested via node:test.
+- **WebAssembly** (cfid_wasm): ~74KB wasm-bindgen wrapper around the Rust
+  crate, for browser-native CF-ID computation.
+- **Swift** (cfid_swift): zero third-party deps via CryptoKit, SPM
+  package, CLI -- a prerequisite for any future iOS/macOS app.
+- **C++** (cfid_cpp): header-only C++17, zero dependencies, embeddable via
+  C ABI in native creative-tool plugins.
+- **Kotlin**: deferred -- no JDK/kotlinc available in this environment.
+  The Swift implementation documents the reference for a future port.
 
 **Phase A -- additional colour science (complete):**
 
