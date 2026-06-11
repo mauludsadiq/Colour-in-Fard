@@ -9,7 +9,7 @@ colour engine, a public registry of over a million identities, and the
 tooling that puts colour identity directly into design and development
 workflows.
 
-Written entirely in FARD -- 8,971 lines, 344 tests, zero failures, no FFI,
+Written entirely in FARD -- 9,404 lines, 364 tests, zero failures, no FFI,
 no external libraries.
 
 ---
@@ -243,7 +243,7 @@ with a full CF profile.
 
 ## Validation
 
-344 tests, 38 suites, 0 failures, including:
+364 tests, 41 suites, 0 failures, including:
 
 - All 6 Sharma 2005 CIEDE2000 canonical pairs, exact
 - All 7 SPEC-2.0.0 CF-ID test vectors, exact, across FARD, Python, and JavaScript
@@ -282,6 +282,28 @@ hardening (Phase E).
   C ABI in native creative-tool plugins.
 - **Kotlin**: deferred -- no JDK/kotlinc available in this environment.
   The Swift implementation documents the reference for a future port.
+
+**Phase D -- standards and ecosystem (partial, no-new-infrastructure items complete):**
+
+- **D.5 Conformance Suite** (conformance/vectors.json, CONFORMANCE.md): a
+  single, language-neutral source of test vectors -- cf_id, 3-digit hex
+  expansion, round3 (including the critical negative-truncation case),
+  CF-Spectral-ID v1/v2, and claim_digest. All 9 surfaces' status tracked
+  in one table; any new implementation can load this file directly.
+- **D.2 Reference Claims**: CF Colour Claims now compute `nearest_reference`
+  automatically (CIEDE2000 against a caller-supplied reference colour),
+  e.g. "#b32424 vs CSS firebrick, dE2000=0.45". No third-party colour data
+  is included -- the same mechanism applies to Pantone/RAL/NCS for anyone
+  with their own licensed reference data.
+- **D.3 File Format Embedding** (EMBEDDING.md): CF-ID embedded in SVG
+  (data attribute + namespaced metadata), PNG (tEXt chunk via a
+  from-scratch CRC-32, byte-for-byte valid output), CSS custom properties,
+  and W3C Design Tokens (`$extensions`).
+
+Remaining Phase D/C/E items (W3C submission, native apps, governance,
+fuzzing, hardware bridges) require new accounts, organisations, or
+hardware outside this environment -- see ROADMAP-V4.md for the full list
+with honest prerequisites.
 
 **Phase A -- additional colour science (complete):**
 
