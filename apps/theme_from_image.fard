@@ -1,0 +1,114 @@
+import("std/list") as list
+import("std/str") as str
+import("std/cast") as cast
+import("std/io") as io
+import("std/cli") as cli
+import("../src/core/kmeans") as km
+import("../src/core/image_read") as imgread
+import("../src/core/cf_id") as cf
+import("../src/core/rgb_lab") as lab
+import("../src/core/dynamic_theme") as theme
+
+// Theme From Image: extract a palette via k-means, pick the most
+// chromatic cluster as the seed colour, and build a full
+// dynamic_theme scheme from it.
+//
+// Usage: theme_from_image <image_path> [k] [light|dark]
+
+fn ff2(f) { str.from_float(cast.float(cast.int(f * 100.0 + 0.5)) / 100.0) }
+
+fn print_role(r) {
+  io.println(str.concat(["  ", r.name, ": #", r.hex, "  (T", str.from_int(r.tone), ", ", r.cf_id, ")"]))
+}
+
+fn print_pair(p) {
+  let ratio = theme.pair_contrast(p) in
+  let aa = if ratio >= 4.5 then "AA" else "FAIL" in
+  let aaa = if ratio >= 7.0 then "/AAA" else "" in
+  let _ = print_role(p.fg) in
+  let _ = print_role(p.bg) in
+  io.println(str.concat(["    contrast(", p.fg.name, " on ", p.bg.name, ") = ", ff2(ratio), "  ", aa, aaa]))
+}
+
+fn main() {
+  let args = cli.args() in
+  if list.len(args) == 0 then
+    io.println("usage: theme_from_image <image_path> [k] [light|dark]")
+  else
+    let path = list.get(args, 0) in
+    let k = if list.len(args) > 1 then cast.int(list.get(args, 1)) else 6 in
+    let mode = if list.len(args) > 2 then list.get(args, 2) else "light" in
+    let is_dark = mode == "dark" in
+
+    let _ = io.println(str.concat(["reading pixels from ", path, "..."])) in
+    let pixels = imgread.read_image_pixels(path, 64) in
+    let n_pixels = list.len(pixels) in
+
+    if n_pixels == 0 then
+      io.println("error: could not read image pixels")
+    else
+      let _ = io.println(str.concat(["sampled ", str.from_int(n_pixels), " pixels, running k-means k=", str.from_int(k), "..."])) in
+      let palette = km.kmeans(pixels, k, 12) in
+
+      // Pick the cluster with the highest LCH chroma as the seed -- the
+      // "most vibrant" colour, the standard heuristic for Material-You
+      // style seed selection (avoids near-grey averages dominating).
+      let with_chroma = list.map(palette, fn(rgb) {
+        let lch = lab.rgb_to_lch(rgb) in
+        { rgb: rgb, chroma: lch.c }
+      }) in
+      let seed_entry = list.fold(with_chroma, list.get(with_chroma, 0), fn(best, entry) {
+        if entry.chroma > best.chroma then entry else best
+      }) in
+      let seed_rgb = seed_entry.rgb in
+      let seed_hex = str.lower(cf.rgb_to_hex6(seed_rgb)) in
+
+      let _ = io.println("") in
+      let _ = io.println("extracted palette:") in
+      let _ = list.fold(with_chroma, 1, fn(i, entry) {
+        let hex = str.lower(cf.rgb_to_hex6(entry.rgb)) in
+        let marker = if entry.rgb == seed_rgb then "  <- seed (highest chroma)" else "" in
+        let _ = io.println(str.concat([
+          "  ", str.from_int(i), ". #", hex,
+          "  chroma=", ff2(entry.chroma),
+          "  ", cf.make_cf_id(entry.rgb), marker
+        ])) in
+        i + 1
+      }) in
+
+      let scheme = theme.build_scheme(seed_rgb, is_dark) in
+
+      let _ = io.println("") in
+      let _ = io.println(str.concat(["seed: #", seed_hex, "  (", cf.make_cf_id(seed_rgb), ")"])) in
+      let _ = io.println(str.concat(["mode: ", mode])) in
+      let _ = io.println("") in
+
+      let _ = io.println("primary:") in
+      let _ = print_pair(list.get(scheme.pairs, 0)) in
+      let _ = print_pair(list.get(scheme.pairs, 1)) in
+      let _ = io.println("") in
+
+      let _ = io.println("secondary:") in
+      let _ = print_pair(list.get(scheme.pairs, 2)) in
+      let _ = print_pair(list.get(scheme.pairs, 3)) in
+      let _ = io.println("") in
+
+      let _ = io.println("tertiary:") in
+      let _ = print_pair(list.get(scheme.pairs, 4)) in
+      let _ = print_pair(list.get(scheme.pairs, 5)) in
+      let _ = io.println("") in
+
+      let _ = io.println("surfaces:") in
+      let _ = print_pair(list.get(scheme.pairs, 6)) in
+      let _ = print_pair(list.get(scheme.pairs, 7)) in
+      let _ = print_role(scheme.outline) in
+      let _ = io.println("") in
+
+      let _ = io.println("error:") in
+      let _ = print_pair(list.get(scheme.pairs, 8)) in
+      let _ = print_pair(list.get(scheme.pairs, 9)) in
+
+      0
+}
+
+main()

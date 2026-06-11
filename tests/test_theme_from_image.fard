@@ -1,0 +1,50 @@
+import("std/list") as list
+import("../src/core/kmeans") as km
+import("../src/core/rgb_lab") as lab
+import("../src/core/dynamic_theme") as theme
+
+fn rgb(r,g,b) { { r: r, g: g, b: b } }
+
+// Synthetic "palette" -- four colours of varying chroma, mimicking
+// k-means output for an image with a clear most-vibrant colour.
+let SAMPLE_PALETTE = [
+  rgb(0.82, 0.34, 0.21),  // muted orange-red, moderate chroma
+  rgb(0.87, 0.70, 0.22),  // gold, highest chroma
+  rgb(0.28, 0.42, 0.76),  // blue, moderate chroma
+  rgb(0.38, 0.59, 0.39)   // green, lower chroma
+]
+
+fn pick_seed(palette) {
+  let with_chroma = list.map(palette, fn(c) {
+    let lch = lab.rgb_to_lch(c) in
+    { rgb: c, chroma: lch.c }
+  }) in
+  list.fold(with_chroma, list.get(with_chroma, 0), fn(best, entry) {
+    if entry.chroma > best.chroma then entry else best
+  })
+}
+
+test "seed selection picks the highest-chroma palette entry" {
+  let seed = pick_seed(SAMPLE_PALETTE) in
+  // The gold entry (index 1) should win.
+  seed.rgb.r == 0.87 && seed.rgb.g == 0.70 && seed.rgb.b == 0.22
+}
+
+test "scheme built from extracted seed passes WCAG AA on all pairs" {
+  let seed = pick_seed(SAMPLE_PALETTE) in
+  theme.all_pairs_aa(theme.build_scheme(seed.rgb, false)) &&
+  theme.all_pairs_aa(theme.build_scheme(seed.rgb, true))
+}
+
+test "single-colour palette is handled (seed == only entry)" {
+  let mono = [rgb(0.5, 0.5, 0.5)] in
+  let seed = pick_seed(mono) in
+  seed.rgb.r == 0.5 && seed.rgb.g == 0.5 && seed.rgb.b == 0.5
+}
+
+test "all-grey palette (zero chroma) still yields a usable scheme" {
+  let greys = [rgb(0.2,0.2,0.2), rgb(0.5,0.5,0.5), rgb(0.8,0.8,0.8)] in
+  let seed = pick_seed(greys) in
+  let scheme = theme.build_scheme(seed.rgb, false) in
+  theme.all_pairs_aa(scheme)
+}
