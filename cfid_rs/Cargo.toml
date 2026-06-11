@@ -1,0 +1,15 @@
+[package]
+name = "cfcolor"
+version = "1.0.0"
+edition = "2021"
+description = "CF-ID: deterministic colour identity (CF-Protocol-2.0.0). Pure Rust, no dependencies."
+license = "MIT"
+repository = "https://github.com/mauludsadiq/Colour-in-Fard"
+
+[lib]
+name = "cfcolor"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cfid"
+path = "src/main.rs"
