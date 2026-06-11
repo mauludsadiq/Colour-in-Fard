@@ -1,0 +1,111 @@
+import("std/hash") as hash
+import("std/list") as list
+import("std/str") as str
+import("std/json") as json
+import("std/fs") as fs
+import("std/cast") as cast
+import("../src/core/cf_id") as cf
+import("../src/core/spectral") as sp1
+import("../src/core/spectral2") as sp2
+import("../src/core/claim") as claim_mod
+import("../src/core/math") as m
+
+let VECTORS = json.decode(fs.read_text("conformance/vectors.json"))
+
+fn hex_digit_val(c) {
+  if c == "0" then 0 else if c == "1" then 1 else if c == "2" then 2
+  else if c == "3" then 3 else if c == "4" then 4 else if c == "5" then 5
+  else if c == "6" then 6 else if c == "7" then 7 else if c == "8" then 8
+  else if c == "9" then 9
+  else if c == "a" || c == "A" then 10
+  else if c == "b" || c == "B" then 11
+  else if c == "c" || c == "C" then 12
+  else if c == "d" || c == "D" then 13
+  else if c == "e" || c == "E" then 14
+  else 15
+}
+
+fn hex2_to_int(s) {
+  hex_digit_val(str.slice(s, 0, 1)) * 16 + hex_digit_val(str.slice(s, 1, 2))
+}
+
+fn expand_hex(h) {
+  if str.len(h) == 3 then
+    str.concat([
+      str.slice(h,0,1), str.slice(h,0,1),
+      str.slice(h,1,2), str.slice(h,1,2),
+      str.slice(h,2,3), str.slice(h,2,3)
+    ])
+  else h
+}
+
+fn hex_to_rgb(hex_str) {
+  let h0 = if str.starts_with(hex_str, "#") then str.slice(hex_str, 1, str.len(hex_str)) else hex_str in
+  let h = expand_hex(h0) in
+  {
+    r: cast.float(hex2_to_int(str.slice(h, 0, 2))) / 255.0,
+    g: cast.float(hex2_to_int(str.slice(h, 2, 4))) / 255.0,
+    b: cast.float(hex2_to_int(str.slice(h, 4, 6))) / 255.0
+  }
+}
+
+fn from_hex(hex_str) {
+  cf.make_cf_id(hex_to_rgb(hex_str))
+}
+
+test "vectors.json loads and has expected suite_version" {
+  VECTORS.suite_version == "CF-Conformance-1.0.0"
+}
+
+test "all cf_id_vectors pass against the FARD reference" {
+  list.fold(VECTORS.cf_id_vectors, true, fn(acc, v) {
+    acc && from_hex(v.hex) == v.cf_id
+  })
+}
+
+test "all three_digit_hex_expansion vectors produce matching cf_ids" {
+  list.fold(VECTORS.three_digit_hex_expansion, true, fn(acc, v) {
+    acc && from_hex(v.short) == from_hex(v.expands_to)
+  })
+}
+
+test "all round3_vectors.cases pass" {
+  list.fold(VECTORS.round3_vectors.cases, true, fn(acc, c) {
+    acc && cf.round3(c.input) == c.expected
+  })
+}
+
+test "cf_spectral_id_v1 vector matches" {
+  let v = list.get(VECTORS.cf_spectral_id_v1_vectors, 0) in
+  let r = sp1.flat_reflectance(v.reflectance_value) in
+  let entry = sp1.make_spectral_entry(r) in
+  entry.cf_id == v.cf_id && entry.cf_spectral_id == v.cf_spectral_id
+}
+
+test "cf_spectral_id_v2 vector: LAB.L matches v1 exactly, prefix correct" {
+  let v1 = list.get(VECTORS.cf_spectral_id_v1_vectors, 0) in
+  let v2 = list.get(VECTORS.cf_spectral_id_v2_vectors, 0) in
+  let r2 = sp2.flat_reflectance_2(v2.reflectance_value) in
+  let entry2 = sp2.make_spectral_entry_2(r2) in
+  m.absf(list.get(entry2.lab, 0) - v2.lab_l) < 0.001 &&
+  str.starts_with(entry2.cf_spectral_id, v2.cf_spectral_id_prefix)
+}
+
+test "claim_digest_vector matches FARD's compute_claim_digest" {
+  let cwd = VECTORS.claim_digest_vector.claim_without_digest in
+  let claim_without_digest = {
+    claim_version:        cwd.claim_version,
+    name:                 cwd.name,
+    srgb_hex:             cwd.srgb_hex,
+    cf_id:                cwd.cf_id,
+    spectral_reflectance: cwd.spectral_reflectance,
+    cf_spectral_id:       cwd.cf_spectral_id,
+    cmyk:                 cwd.cmyk,
+    icc_profile:          cwd.icc_profile,
+    nearest_reference:    cwd.nearest_reference,
+    provenance:           cwd.provenance,
+    protocol_version:     cwd.protocol_version
+  } in
+  let digest = hash.sha256_text(json.encode(claim_without_digest)) in
+  digest == VECTORS.claim_digest_vector.expected_digest
+}

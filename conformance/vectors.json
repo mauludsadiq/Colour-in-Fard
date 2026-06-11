@@ -1,0 +1,92 @@
+{
+  "suite_version": "CF-Conformance-1.0.0",
+  "spec_version": "CF-Protocol-2.0.0",
+  "description": "Canonical, language-neutral test vectors for CF-ID and related identities. Any conformant implementation MUST reproduce all values in this file exactly. Source: SPEC-2.0.md Appendices A and B.",
+
+  "cf_id_vectors": [
+    { "hex": "#000000", "cf_id": "CF-000000-86165F20" },
+    { "hex": "#ffffff", "cf_id": "CF-FFFFFF-2DD4EB92" },
+    { "hex": "#ff0000", "cf_id": "CF-FF0000-37AB74A7" },
+    { "hex": "#00ff00", "cf_id": "CF-00FF00-9377CC77" },
+    { "hex": "#0000ff", "cf_id": "CF-0000FF-D81673DF" },
+    { "hex": "#7b3f00", "cf_id": "CF-7B3F00-EA262463" },
+    { "hex": "#cc0000", "cf_id": "CF-CC0000-791976F7" },
+    { "hex": "#ea682d", "cf_id": "CF-EA682D-94A4C6AC" }
+  ],
+
+  "three_digit_hex_expansion": [
+    { "short": "#f00", "expands_to": "#ff0000" },
+    { "short": "#0f0", "expands_to": "#00ff00" },
+    { "short": "#00f", "expands_to": "#0000ff" }
+  ],
+
+  "round3_vectors": {
+    "description": "round3(x) = trunc(x*1000 + 0.5) / 1000, truncation toward zero (NOT round-half-up). This is the single most common source of cross-language non-conformance.",
+    "cases": [
+      { "input": -86.183, "expected": -86.182 },
+      { "input": 86.183, "expected": 86.183 },
+      { "input": 0.0001, "expected": 0.0 },
+      { "input": -0.0001, "expected": 0.0 }
+    ]
+  },
+
+  "lab_vectors": [
+    {
+      "hex": "#7b3f00",
+      "lab": { "l": 33.493, "a": 22.291, "b": 43.796 },
+      "lch": { "l": 33.493, "c": 49.142, "h": 63.025 },
+      "contrast_white": 8.22
+    }
+  ],
+
+  "wcag_vectors": {
+    "description": "WCAG 2.x contrast ratio, computed via relative luminance from sRGB.",
+    "cases": [
+      { "hex": "#7b3f00", "contrast_white": 8.22, "level_on_white": "AAA" }
+    ]
+  },
+
+  "cf_spectral_id_v1_vectors": [
+    {
+      "description": "Flat 50% reflectance, 36 samples (10nm, 380-730nm)",
+      "reflectance_value": 0.5,
+      "sample_count": 36,
+      "lab": { "l": 76.069, "a": -0.047, "b": 0.033 },
+      "cf_id": "CF-BBBCBB-55C6D241",
+      "cf_spectral_id": "CF-SPECTRAL-A238F71E"
+    }
+  ],
+
+  "cf_spectral_id_v2_vectors": [
+    {
+      "description": "Flat 50% reflectance, 71 samples (5nm, 380-730nm). LAB.L MUST match the v1.0 vector exactly (identical luminance under flat reflectance), confirming sound CMF/D65 interpolation; a/b and the resulting cf_id differ slightly and are both valid (parallel identity schemes).",
+      "reflectance_value": 0.5,
+      "sample_count": 71,
+      "lab_l": 76.069,
+      "cf_spectral_id_prefix": "CF-SPECTRAL2-"
+    }
+  ],
+
+  "claim_digest_vector": {
+    "description": "claim_digest = sha256:hex(sha256(canonical_json(claim_without_claim_digest))). Demonstrates that canonical JSON encoding (alphabetical keys, no whitespace, integers without decimal points) produces identical digests across implementations -- verified cross-language (FARD vs Python json.dumps(sort_keys=True)).",
+    "claim_without_digest": {
+      "claim_version": "CF-Claim-1.0.0",
+      "name": "Vermilion (reference)",
+      "srgb_hex": "#ea682d",
+      "cf_id": "CF-EA682D-94A4C6AC",
+      "spectral_reflectance": null,
+      "cf_spectral_id": null,
+      "cmyk": null,
+      "icc_profile": null,
+      "nearest_reference": null,
+      "provenance": {
+        "date": null,
+        "measured_by": null,
+        "notes": null,
+        "organisation": null
+      },
+      "protocol_version": "CF-Protocol-1.0.0"
+    },
+    "expected_digest": "sha256:c6b9381d6963da0133b2dc5f339262fbbefe42284fb16e204de2c53e912ff2d7"
+  }
+}
