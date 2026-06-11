@@ -1,0 +1,177 @@
+import("std/list") as list
+import("std/str") as str
+import("std/io") as io
+import("std/cli") as cli
+import("std/cast") as cast
+import("../src/core/dynamic_theme") as theme
+
+// Theme Export: render a dynamic_theme scheme into common consumer
+// formats -- CSS custom properties, Tailwind config, W3C Design Tokens,
+// Android XML resources, and SwiftUI. Every colour carries its CF-ID
+// alongside it (as a comment, $extensions field, or similar), per
+// EMBEDDING.md's "additive, non-breaking" principle.
+//
+// Usage: theme_export <seed_hex> <light|dark> <css|tailwind|tokens|android|swiftui>
+
+fn hex_digit_val(c) {
+  if c == "0" then 0 else if c == "1" then 1 else if c == "2" then 2
+  else if c == "3" then 3 else if c == "4" then 4 else if c == "5" then 5
+  else if c == "6" then 6 else if c == "7" then 7 else if c == "8" then 8
+  else if c == "9" then 9
+  else if c == "a" || c == "A" then 10
+  else if c == "b" || c == "B" then 11
+  else if c == "c" || c == "C" then 12
+  else if c == "d" || c == "D" then 13
+  else if c == "e" || c == "E" then 14
+  else 15
+}
+
+fn hex2_to_int(s) {
+  hex_digit_val(str.slice(s, 0, 1)) * 16 + hex_digit_val(str.slice(s, 1, 2))
+}
+
+fn hex_to_rgb(hex_str) {
+  let h = if str.starts_with(hex_str, "#") then str.slice(hex_str, 1, str.len(hex_str)) else hex_str in
+  {
+    r: cast.float(hex2_to_int(str.slice(h, 0, 2))) / 255.0,
+    g: cast.float(hex2_to_int(str.slice(h, 2, 4))) / 255.0,
+    b: cast.float(hex2_to_int(str.slice(h, 4, 6))) / 255.0
+  }
+}
+
+// camelCase -> separator-cased (e.g. "primaryContainer" -> "primary-container"
+// with sep="-", or "primary_container" with sep="_"). Each uppercase
+// letter (other than the first character) starts a new segment.
+fn camel_to_sep(s, sep) {
+  let n = str.len(s) in
+  list.fold(list.range(0, n), "", fn(acc, i) {
+    let c = str.slice(s, i, i + 1) in
+    let lower = str.to_lower(c) in
+    if i > 0 && lower != c then
+      str.concat([acc, sep, lower])
+    else
+      str.concat([acc, lower])
+  })
+}
+
+fn lower_hex(role) {
+  str.concat(["#", str.to_lower(role.hex)])
+}
+
+// ---------------------------------------------------------------------
+// CSS custom properties
+// ---------------------------------------------------------------------
+fn render_css(scheme, mode) {
+  let roles = theme.all_roles(scheme) in
+  let selector = if mode == "dark" then "[data-theme=\"dark\"]" else ":root" in
+  let header = str.concat([selector, " {\n"]) in
+  let body = list.fold(roles, "", fn(acc, entry) {
+    let name = camel_to_sep(entry.key, "-") in
+    str.concat([acc,
+      "  --md-sys-color-", name, ": ", lower_hex(entry.role), ";",
+      " /* CF-ID: ", entry.role.cf_id, " */\n"
+    ])
+  }) in
+  str.concat([header, body, "}\n"])
+}
+
+// ---------------------------------------------------------------------
+// Tailwind (CommonJS module, theme.extend.colors)
+// ---------------------------------------------------------------------
+fn render_tailwind(scheme, mode) {
+  let roles = theme.all_roles(scheme) in
+  let header = "// CF-IDs are listed in the comments; see CONFORMANCE.md\n// for how to verify them.\nmodule.exports = {\n  theme: {\n    extend: {\n      colors: {\n" in
+  let body = list.fold(roles, "", fn(acc, entry) {
+    str.concat([acc,
+      "        ", entry.key, ": '", lower_hex(entry.role), "', // ", entry.role.cf_id, "\n"
+    ])
+  }) in
+  str.concat([header, body, "      }\n    }\n  }\n}\n"])
+}
+
+// ---------------------------------------------------------------------
+// W3C Design Tokens (Community Group format, $extensions for CF-ID)
+// ---------------------------------------------------------------------
+fn render_tokens(scheme, mode) {
+  let roles = theme.all_roles(scheme) in
+  let header = "{\n  \"$schema\": \"https://design-tokens.github.io/community-group/format/\",\n  \"color\": {\n" in
+  let n = list.len(roles) in
+  let body = list.fold(list.range(0, n), "", fn(acc, i) {
+    let entry = list.get(roles, i) in
+    let comma = if i < n - 1 then "," else "" in
+    str.concat([acc,
+      "    \"", entry.key, "\": {\n",
+      "      \"$type\": \"color\",\n",
+      "      \"$value\": \"", lower_hex(entry.role), "\",\n",
+      "      \"$extensions\": {\n",
+      "        \"io.github.mauludsadiq.colour-in-fard\": {\n",
+      "          \"cfId\": \"", entry.role.cf_id, "\",\n",
+      "          \"identityVersion\": \"CF-ID-1.0.0\"\n",
+      "        }\n",
+      "      }\n",
+      "    }", comma, "\n"
+    ])
+  }) in
+  str.concat([header, body, "  }\n}\n"])
+}
+
+// ---------------------------------------------------------------------
+// Android XML resources
+// ---------------------------------------------------------------------
+fn render_android(scheme, mode) {
+  let roles = theme.all_roles(scheme) in
+  let header = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<resources>\n" in
+  let body = list.fold(roles, "", fn(acc, entry) {
+    let name = camel_to_sep(entry.key, "_") in
+    str.concat([acc,
+      "    <!-- CF-ID: ", entry.role.cf_id, " -->\n",
+      "    <color name=\"md_theme_", mode, "_", name, "\">", lower_hex(entry.role), "</color>\n"
+    ])
+  }) in
+  str.concat([header, body, "</resources>\n"])
+}
+
+// ---------------------------------------------------------------------
+// SwiftUI
+// ---------------------------------------------------------------------
+fn render_swiftui(scheme, mode) {
+  let roles = theme.all_roles(scheme) in
+  let type_name = if mode == "dark" then "DarkTheme" else "LightTheme" in
+  let header = str.concat(["import SwiftUI\n\nextension Color {\n    enum ", type_name, " {\n"]) in
+  let body = list.fold(roles, "", fn(acc, entry) {
+    str.concat([acc,
+      "        // CF-ID: ", entry.role.cf_id, "\n",
+      "        static let ", entry.key, " = Color(hex: \"", lower_hex(entry.role), "\")\n"
+    ])
+  }) in
+  str.concat([header, body, "    }\n}\n"])
+}
+
+fn main() {
+  let args = cli.args() in
+  if list.len(args) < 3 then
+    io.println("usage: theme_export <seed_hex> <light|dark> <css|tailwind|tokens|android|swiftui>")
+  else
+    let hex_in = list.get(args, 0) in
+    let mode = list.get(args, 1) in
+    let format = list.get(args, 2) in
+    let is_dark = mode == "dark" in
+
+    let seed_rgb = hex_to_rgb(hex_in) in
+    let scheme = theme.build_scheme(seed_rgb, is_dark) in
+
+    if format == "css" then
+      io.println(render_css(scheme, mode))
+    else if format == "tailwind" then
+      io.println(render_tailwind(scheme, mode))
+    else if format == "tokens" then
+      io.println(render_tokens(scheme, mode))
+    else if format == "android" then
+      io.println(render_android(scheme, mode))
+    else if format == "swiftui" then
+      io.println(render_swiftui(scheme, mode))
+    else
+      io.println(str.concat(["error: unknown format '", format, "' (expected css|tailwind|tokens|android|swiftui)"]))
+}
+
+main()

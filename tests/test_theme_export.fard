@@ -1,0 +1,48 @@
+import("std/list") as list
+import("std/str") as str
+import("../src/core/dynamic_theme") as theme
+
+fn rgb(r,g,b) { { r: r, g: g, b: b } }
+
+let SEED = rgb(0.482, 0.247, 0.0)  // #7B3F00
+
+test "all_roles returns 21 entries" {
+  let scheme = theme.build_scheme(SEED, false) in
+  list.len(theme.all_roles(scheme)) == 21
+}
+
+test "all_roles includes primary and onPrimaryContainer with correct hex" {
+  let scheme = theme.build_scheme(SEED, false) in
+  let roles = theme.all_roles(scheme) in
+  let primary = list.get(roles, 0) in
+  let on_primary_container = list.get(roles, 3) in
+  primary.key == "primary" && primary.role.hex == scheme.primary.hex &&
+  on_primary_container.key == "onPrimaryContainer" && on_primary_container.role.hex == scheme.on_primary_container.hex
+}
+
+test "every role's hex is 6 hex digits and CF-ID is well-formed" {
+  let scheme = theme.build_scheme(SEED, false) in
+  let roles = theme.all_roles(scheme) in
+  list.fold(roles, true, fn(acc, entry) {
+    acc &&
+    str.len(entry.role.hex) == 6 &&
+    str.starts_with(entry.role.cf_id, "CF-") &&
+    str.len(entry.role.cf_id) == 18
+  })
+}
+
+test "all_roles order matches the documented role list (first and last)" {
+  let scheme = theme.build_scheme(SEED, false) in
+  let roles = theme.all_roles(scheme) in
+  let first = list.get(roles, 0) in
+  let last = list.get(roles, 20) in
+  first.key == "primary" && last.key == "onErrorContainer"
+}
+
+test "dark scheme's all_roles differ from light scheme's for primary" {
+  let light = theme.all_roles(theme.build_scheme(SEED, false)) in
+  let dark = theme.all_roles(theme.build_scheme(SEED, true)) in
+  let lp = list.get(light, 0) in
+  let dp = list.get(dark, 0) in
+  lp.role.hex != dp.role.hex
+}

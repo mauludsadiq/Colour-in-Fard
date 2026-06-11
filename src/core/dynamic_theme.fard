@@ -170,6 +170,35 @@ fn build_scheme(seed_rgb, is_dark) {
   }
 }
 
+// All roles in a stable order, as {key, role} -- key is the
+// camelCase Material-3-style role name, used as the basis for
+// format-specific naming by export tools.
+fn all_roles(scheme) {
+  [
+    { key: "primary",               role: scheme.primary },
+    { key: "onPrimary",             role: scheme.on_primary },
+    { key: "primaryContainer",      role: scheme.primary_container },
+    { key: "onPrimaryContainer",    role: scheme.on_primary_container },
+    { key: "secondary",             role: scheme.secondary },
+    { key: "onSecondary",           role: scheme.on_secondary },
+    { key: "secondaryContainer",    role: scheme.secondary_container },
+    { key: "onSecondaryContainer",  role: scheme.on_secondary_container },
+    { key: "tertiary",              role: scheme.tertiary },
+    { key: "onTertiary",            role: scheme.on_tertiary },
+    { key: "tertiaryContainer",     role: scheme.tertiary_container },
+    { key: "onTertiaryContainer",   role: scheme.on_tertiary_container },
+    { key: "surface",               role: scheme.surface },
+    { key: "onSurface",             role: scheme.on_surface },
+    { key: "surfaceVariant",        role: scheme.surface_variant },
+    { key: "onSurfaceVariant",      role: scheme.on_surface_variant },
+    { key: "outline",               role: scheme.outline },
+    { key: "error",                 role: scheme.error },
+    { key: "onError",               role: scheme.on_error },
+    { key: "errorContainer",        role: scheme.error_container },
+    { key: "onErrorContainer",      role: scheme.on_error_container }
+  ]
+}
+
 // Contrast ratio for a {fg, bg} pair (each a role record with .rgb).
 fn pair_contrast(p) {
   wcag.contrast_ratio(p.fg.rgb, p.bg.rgb)
@@ -185,6 +214,7 @@ fn all_pairs_aa(scheme) {
 {
   tone_rgb:        tone_rgb,
   role:            role,
+  all_roles:       all_roles,
   build_scheme:    build_scheme,
   pair_contrast:   pair_contrast,
   all_pairs_aa:    all_pairs_aa
