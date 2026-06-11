@@ -1,0 +1,131 @@
+import("std/list") as list
+import("std/str") as str
+import("std/io") as io
+import("std/cli") as cli
+import("std/cast") as cast
+import("std/fs") as fs
+import("std/json") as json
+import("../src/core/cf_id") as cf
+import("../src/core/dynamic_theme") as theme
+import("../src/core/claim") as claim_mod
+
+// Theme Claims: wrap every role of a dynamic_theme scheme in a CF
+// Colour Claim (per CLAIM-SPEC.md), one JSON file per role. This lets a
+// design system "lock in" a generated theme: each role's colour, CF-ID,
+// and claim_digest are stored together, so any later edit to a role's
+// hex value (whether accidental or deliberate) is immediately detectable
+// via `verify`.
+//
+// Usage:
+//   theme_claims create <seed_hex> <light|dark> <out_dir>
+//   theme_claims verify <dir>
+
+fn hex_digit_val(c) {
+  if c == "0" then 0 else if c == "1" then 1 else if c == "2" then 2
+  else if c == "3" then 3 else if c == "4" then 4 else if c == "5" then 5
+  else if c == "6" then 6 else if c == "7" then 7 else if c == "8" then 8
+  else if c == "9" then 9
+  else if c == "a" || c == "A" then 10
+  else if c == "b" || c == "B" then 11
+  else if c == "c" || c == "C" then 12
+  else if c == "d" || c == "D" then 13
+  else if c == "e" || c == "E" then 14
+  else 15
+}
+
+fn hex2_to_int(s) {
+  hex_digit_val(str.slice(s, 0, 1)) * 16 + hex_digit_val(str.slice(s, 1, 2))
+}
+
+fn hex_to_rgb(hex_str) {
+  let h = if str.starts_with(hex_str, "#") then str.slice(hex_str, 1, str.len(hex_str)) else hex_str in
+  {
+    r: cast.float(hex2_to_int(str.slice(h, 0, 2))) / 255.0,
+    g: cast.float(hex2_to_int(str.slice(h, 2, 4))) / 255.0,
+    b: cast.float(hex2_to_int(str.slice(h, 4, 6))) / 255.0
+  }
+}
+
+fn no_provenance() {
+  { measured_by: null, organisation: null, date: null, notes: null }
+}
+
+fn role_fields(entry) {
+  {
+    name: entry.key,
+    srgb_hex: str.concat(["#", str.lower(entry.role.hex)]),
+    spectral_reflectance: null,
+    cmyk: null,
+    icc_profile: null,
+    reference_system: null,
+    reference_code: null,
+    reference_hex: null,
+    provenance: no_provenance()
+  }
+}
+
+fn create(args) {
+  if list.len(args) < 4 then
+    io.println("usage: theme_claims create <seed_hex> <light|dark> <out_dir>")
+  else
+    let hex_in = list.get(args, 1) in
+    let mode = list.get(args, 2) in
+    let out_dir = list.get(args, 3) in
+    let is_dark = mode == "dark" in
+
+    let seed_rgb = hex_to_rgb(hex_in) in
+    let scheme = theme.build_scheme(seed_rgb, is_dark) in
+    let roles = theme.all_roles(scheme) in
+
+    let _ = fs.make_dir(out_dir) in
+
+    let _ = list.fold(roles, 0, fn(_, entry) {
+      let claim = claim_mod.make_claim(role_fields(entry)) in
+      let path = str.concat([out_dir, "/", entry.key, ".json"]) in
+      let _ = fs.write_text(path, json.encode(claim)) in
+      io.println(str.concat(["  wrote ", path, "  ", claim.cf_id]))
+    }) in
+
+    io.println(str.concat(["\n", str.from_int(list.len(roles)), " claims written to ", out_dir]))
+}
+
+fn verify(args) {
+  if list.len(args) < 2 then
+    io.println("usage: theme_claims verify <dir>")
+  else
+    let dir = list.get(args, 1) in
+    let names = fs.read_dir(dir) in
+    let json_names = list.filter(names, fn(n) { str.ends_with(n, ".json") }) in
+
+    let results = list.map(json_names, fn(name) {
+      let path = str.concat([dir, "/", name]) in
+      let claim = json.decode(fs.read_text(path)) in
+      let result = claim_mod.verify_claim(claim) in
+      { name: name, claim: claim, result: result }
+    }) in
+
+    let _ = list.fold(results, 0, fn(_, r) {
+      let status = if r.result.valid then "VALID" else "INVALID" in
+      io.println(str.concat(["  ", r.name, "  ", r.claim.cf_id, "  ", status]))
+    }) in
+
+    let n_valid = list.fold(results, 0, fn(acc, r) {
+      if r.result.valid then acc + 1 else acc
+    }) in
+    let n_total = list.len(results) in
+
+    io.println(str.concat(["\n", str.from_int(n_valid), "/", str.from_int(n_total), " claims valid"]))
+}
+
+fn main() {
+  let args = cli.args() in
+  if list.len(args) == 0 then
+    io.println("usage: theme_claims create <seed_hex> <light|dark> <out_dir> | theme_claims verify <dir>")
+  else
+    let cmd = list.get(args, 0) in
+    if cmd == "create" then create(args)
+    else if cmd == "verify" then verify(args)
+    else io.println(str.concat(["error: unknown command '", cmd, "' (expected create|verify)"]))
+}
+
+main()

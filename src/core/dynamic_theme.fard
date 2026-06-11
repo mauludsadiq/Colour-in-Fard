@@ -43,9 +43,32 @@ fn rgb_to_hex6_lower(rgb) {
   cf.rgb_to_hex6(clamped)
 }
 
+// Quantize an RGB triple to its 8-bit (hex) representation, using the
+// same rounding as cf_id.rgb_to_hex6 (round-half-up on r*255 etc).
+// This ensures cf_id is computed from exactly the colour the hex string
+// represents -- CF-ID for "#8D4F14" must be identical regardless of
+// whether it arrived via a float computation or by parsing that literal
+// hex string (this is the same canonical-input principle as the
+// SPEC-2.0.md vectors).
+fn quantize_rgb(rgb) {
+  let r8 = cast.int(clamp01(rgb.r) * 255.0 + 0.5) in
+  let g8 = cast.int(clamp01(rgb.g) * 255.0 + 0.5) in
+  let b8 = cast.int(clamp01(rgb.b) * 255.0 + 0.5) in
+  {
+    r: cast.float(r8) / 255.0,
+    g: cast.float(g8) / 255.0,
+    b: cast.float(b8) / 255.0
+  }
+}
+
 // One role: a tone on a given (hue, chroma) palette, with its CF-ID.
+//
+// rgb/hex/cf_id are all derived from the *quantized* (8-bit) colour, so
+// that cf_id always matches what cf_id.from_hex(hex) would produce, and
+// contrast ratios are computed on the same colour that gets exported.
 fn role(name, hue, chroma, tone) {
-  let rgb = tone_rgb(hue, chroma, tone) in
+  let raw_rgb = tone_rgb(hue, chroma, tone) in
+  let rgb = quantize_rgb(raw_rgb) in
   {
     name: name,
     hex: rgb_to_hex6_lower(rgb),
@@ -213,6 +236,7 @@ fn all_pairs_aa(scheme) {
 
 {
   tone_rgb:        tone_rgb,
+  quantize_rgb:    quantize_rgb,
   role:            role,
   all_roles:       all_roles,
   build_scheme:    build_scheme,

@@ -1,0 +1,74 @@
+import("std/list") as list
+import("std/str") as str
+import("../src/core/dynamic_theme") as theme
+import("../src/core/claim") as claim_mod
+
+fn rgb(r,g,b) { { r: r, g: g, b: b } }
+
+fn no_provenance() {
+  { measured_by: null, organisation: null, date: null, notes: null }
+}
+
+fn role_fields(entry) {
+  {
+    name: entry.key,
+    srgb_hex: str.concat(["#", str.lower(entry.role.hex)]),
+    spectral_reflectance: null,
+    cmyk: null,
+    icc_profile: null,
+    reference_system: null,
+    reference_code: null,
+    reference_hex: null,
+    provenance: no_provenance()
+  }
+}
+
+let SEED = rgb(0.482, 0.247, 0.0)  // #7B3F00
+
+test "every role's claim has a cf_id matching the role's own cf_id" {
+  let scheme = theme.build_scheme(SEED, false) in
+  let roles = theme.all_roles(scheme) in
+  list.fold(roles, true, fn(acc, entry) {
+    let claim = claim_mod.make_claim(role_fields(entry)) in
+    acc && claim.cf_id == entry.role.cf_id
+  })
+}
+
+test "every role's claim verifies as valid" {
+  let scheme = theme.build_scheme(SEED, false) in
+  let roles = theme.all_roles(scheme) in
+  list.fold(roles, true, fn(acc, entry) {
+    let claim = claim_mod.make_claim(role_fields(entry)) in
+    let result = claim_mod.verify_claim(claim) in
+    acc && result.valid
+  })
+}
+
+test "tampering with srgb_hex after the fact makes the claim invalid" {
+  let scheme = theme.build_scheme(SEED, false) in
+  let primary = list.get(theme.all_roles(scheme), 0) in
+  let claim = claim_mod.make_claim(role_fields(primary)) in
+  let tampered = {
+    claim_version: claim.claim_version,
+    name: claim.name,
+    srgb_hex: "#000000",
+    cf_id: claim.cf_id,
+    spectral_reflectance: claim.spectral_reflectance,
+    cf_spectral_id: claim.cf_spectral_id,
+    cmyk: claim.cmyk,
+    icc_profile: claim.icc_profile,
+    nearest_reference: claim.nearest_reference,
+    provenance: claim.provenance,
+    protocol_version: claim.protocol_version,
+    claim_digest: claim.claim_digest
+  } in
+  let result = claim_mod.verify_claim(tampered) in
+  !result.valid
+}
+
+test "21 distinct role names produce 21 distinct claim names" {
+  let scheme = theme.build_scheme(SEED, false) in
+  let roles = theme.all_roles(scheme) in
+  let names = list.map(roles, fn(entry) { entry.key }) in
+  list.len(list.dedupe(names)) == 21
+}
