@@ -1,0 +1,68 @@
+import("std/list") as list
+import("std/str") as str
+import("../src/core/math") as m
+import("../src/core/dynamic_theme") as theme
+
+fn rgb(r,g,b) { { r: r, g: g, b: b } }
+
+let SEEDS = [
+  rgb(0.482, 0.247, 0.0),    // #7B3F00 sienna -- moderate chroma
+  rgb(1.0, 0.0, 0.0),        // #FF0000 -- very high chroma
+  rgb(0.0, 1.0, 0.0),        // #00FF00
+  rgb(0.0, 0.0, 1.0),        // #0000FF
+  rgb(0.533, 0.533, 0.533),  // #888888 -- near-neutral, low chroma
+  rgb(0.0, 0.0, 0.0),        // black
+  rgb(1.0, 1.0, 1.0)         // white
+]
+
+test "all 10 role pairs meet WCAG AA, light mode, across diverse seeds" {
+  list.fold(SEEDS, true, fn(acc, seed) {
+    acc && theme.all_pairs_aa(theme.build_scheme(seed, false))
+  })
+}
+
+test "all 10 role pairs meet WCAG AA, dark mode, across diverse seeds" {
+  list.fold(SEEDS, true, fn(acc, seed) {
+    acc && theme.all_pairs_aa(theme.build_scheme(seed, true))
+  })
+}
+
+test "scheme exposes 10 pairs" {
+  let scheme = theme.build_scheme(rgb(0.482, 0.247, 0.0), false) in
+  list.len(scheme.pairs) == 10
+}
+
+test "every role has a valid CF-ID (CF-XXXXXX-XXXXXXXX format, 18 chars)" {
+  let scheme = theme.build_scheme(rgb(0.482, 0.247, 0.0), false) in
+  list.fold(scheme.pairs, true, fn(acc, p) {
+    acc &&
+    str.len(p.fg.cf_id) == 18 &&
+    str.len(p.bg.cf_id) == 18
+  })
+}
+
+test "tone_rgb at T100 is always white regardless of chroma" {
+  let white1 = theme.tone_rgb(0.0, 100.0, 100) in
+  let white2 = theme.tone_rgb(180.0, 50.0, 100) in
+  m.absf(white1.r - 1.0) < 0.001 && m.absf(white1.g - 1.0) < 0.001 && m.absf(white1.b - 1.0) < 0.001 &&
+  m.absf(white2.r - 1.0) < 0.001 && m.absf(white2.g - 1.0) < 0.001 && m.absf(white2.b - 1.0) < 0.001
+}
+
+test "tone_rgb at T0 is always black regardless of chroma" {
+  let black = theme.tone_rgb(120.0, 100.0, 0) in
+  m.absf(black.r) < 0.001 && m.absf(black.g) < 0.001 && m.absf(black.b) < 0.001
+}
+
+test "light and dark schemes from the same seed differ" {
+  let seed = rgb(0.482, 0.247, 0.0) in
+  let light = theme.build_scheme(seed, false) in
+  let dark = theme.build_scheme(seed, true) in
+  light.primary.hex != dark.primary.hex
+}
+
+test "build_scheme is deterministic" {
+  let seed = rgb(0.482, 0.247, 0.0) in
+  let s1 = theme.build_scheme(seed, false) in
+  let s2 = theme.build_scheme(seed, false) in
+  s1.primary.cf_id == s2.primary.cf_id && s1.surface.hex == s2.surface.hex
+}

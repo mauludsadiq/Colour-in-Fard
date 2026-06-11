@@ -1,0 +1,191 @@
+import("std/list") as list
+import("std/cast") as cast
+import("../core/types") as t
+import("../core/rgb_lab") as lab
+import("../core/cf_id") as cf
+import("../core/wcag") as wcag
+
+// Dynamic Theme: a Material-You-style colour scheme from a single seed.
+//
+// This is an independent reimplementation, in FARD, of the *publicly
+// documented role structure and tonal-palette approach* popularised by
+// Material 3 (the mapping of roles like "primary"/"onPrimary"/
+// "primaryContainer" to specific tone numbers on a hue/chroma palette).
+// It is not a port of any existing source code. The chroma values used
+// for each palette are simplified, fixed approximations (documented
+// inline below) rather than Material 3's own derivation algorithm -- this
+// produces a usable, accessible scheme, but is not claimed to be
+// byte-identical to Material 3's output.
+
+fn clamp01(v) {
+  if v < 0.0 then 0.0 else if v > 1.0 then 1.0 else v
+}
+
+fn norm_hue(h) {
+  if h < 0.0 then h + 360.0 else if h >= 360.0 then h - 360.0 else h
+}
+
+// Generate a tone (0-100) on a fixed-hue/chroma palette as RGB.
+//
+// At the extremes (T0, T100), pure black/white is achromatic by
+// definition -- a high chroma at L*=100 or L*=0 is wildly out of gamut
+// in LCH and clamps to an unintended tinted colour rather than
+// white/black. HCT's own gamut mapping handles this implicitly; here we
+// do it explicitly by zeroing chroma at the extremes.
+fn tone_rgb(hue, chroma, tone) {
+  let effective_chroma = if tone <= 0 || tone >= 100 then 0.0 else chroma in
+  let lch = t.lch(cast.float(tone), effective_chroma, hue) in
+  lab.lch_to_rgb(lch)
+}
+
+fn rgb_to_hex6_lower(rgb) {
+  let clamped = { r: clamp01(rgb.r), g: clamp01(rgb.g), b: clamp01(rgb.b) } in
+  cf.rgb_to_hex6(clamped)
+}
+
+// One role: a tone on a given (hue, chroma) palette, with its CF-ID.
+fn role(name, hue, chroma, tone) {
+  let rgb = tone_rgb(hue, chroma, tone) in
+  {
+    name: name,
+    hex: rgb_to_hex6_lower(rgb),
+    rgb: rgb,
+    cf_id: cf.make_cf_id(rgb),
+    tone: tone
+  }
+}
+
+// Build a full scheme (light or dark) from a seed RGB.
+//
+// Returns a record with one entry per Material-3-style role, plus
+// `pairs`: a list of {fg, bg} role pairs that should meet WCAG AA.
+fn build_scheme(seed_rgb, is_dark) {
+  let seed_lch = lab.rgb_to_lch(seed_rgb) in
+  let h = seed_lch.h in
+
+  // Palette definitions: (hue, chroma)
+  // Primary uses the seed's own hue, capped to a chroma achievable
+  // across the full tone range without going out-of-gamut at T30/T80
+  // (very saturated seeds, e.g. pure red at chroma ~104, would
+  // otherwise produce unreadable on/container pairs at those tones).
+  let primary_h = h in
+  let primary_c = if seed_lch.c > 48.0 then 48.0 else seed_lch.c in
+  // Secondary: same hue family, lower chroma -- a muted accent.
+  let secondary_h = h in
+  let secondary_c = 16.0 in
+  // Tertiary: a complementary-ish accent, hue shifted +60 degrees.
+  let tertiary_h = norm_hue(h + 60.0) in
+  let tertiary_c = 24.0 in
+  // Neutral surfaces: same hue family, very low chroma (a hint of tint).
+  let neutral_h = h in
+  let neutral_c = 4.0 in
+  // Neutral-variant: slightly more chroma than neutral, for outlines/variants.
+  let neutral_variant_h = h in
+  let neutral_variant_c = 8.0 in
+  // Error: a fixed red palette, independent of the seed. Chroma kept
+  // moderate (50, not the theoretical max ~104) so it stays in-gamut
+  // across T20-T90.
+  let error_h = 25.0 in
+  let error_c = 50.0 in
+
+  let primary_tone           = if is_dark then 80 else 40 in
+  let on_primary_tone        = if is_dark then 20 else 100 in
+  let primary_container_tone = if is_dark then 30 else 90 in
+  let on_primary_cont_tone   = if is_dark then 90 else 10 in
+
+  let secondary_tone           = if is_dark then 80 else 40 in
+  let on_secondary_tone        = if is_dark then 20 else 100 in
+  let secondary_container_tone = if is_dark then 30 else 90 in
+  let on_secondary_cont_tone   = if is_dark then 90 else 10 in
+
+  let tertiary_tone           = if is_dark then 80 else 40 in
+  let on_tertiary_tone        = if is_dark then 20 else 100 in
+  let tertiary_container_tone = if is_dark then 30 else 90 in
+  let on_tertiary_cont_tone   = if is_dark then 90 else 10 in
+
+  let surface_tone        = if is_dark then 10 else 98 in
+  let on_surface_tone     = if is_dark then 90 else 10 in
+  let surface_var_tone    = if is_dark then 30 else 90 in
+  let on_surface_var_tone = if is_dark then 80 else 30 in
+  let outline_tone        = if is_dark then 60 else 50 in
+
+  let error_tone           = if is_dark then 80 else 40 in
+  let on_error_tone        = if is_dark then 20 else 100 in
+  let error_container_tone = if is_dark then 30 else 90 in
+  let on_error_cont_tone   = if is_dark then 90 else 10 in
+
+  let primary             = role("primary", primary_h, primary_c, primary_tone) in
+  let on_primary          = role("onPrimary", primary_h, primary_c, on_primary_tone) in
+  let primary_container   = role("primaryContainer", primary_h, primary_c, primary_container_tone) in
+  let on_primary_container = role("onPrimaryContainer", primary_h, primary_c, on_primary_cont_tone) in
+
+  let secondary             = role("secondary", secondary_h, secondary_c, secondary_tone) in
+  let on_secondary          = role("onSecondary", secondary_h, secondary_c, on_secondary_tone) in
+  let secondary_container   = role("secondaryContainer", secondary_h, secondary_c, secondary_container_tone) in
+  let on_secondary_container = role("onSecondaryContainer", secondary_h, secondary_c, on_secondary_cont_tone) in
+
+  let tertiary             = role("tertiary", tertiary_h, tertiary_c, tertiary_tone) in
+  let on_tertiary          = role("onTertiary", tertiary_h, tertiary_c, on_tertiary_tone) in
+  let tertiary_container   = role("tertiaryContainer", tertiary_h, tertiary_c, tertiary_container_tone) in
+  let on_tertiary_container = role("onTertiaryContainer", tertiary_h, tertiary_c, on_tertiary_cont_tone) in
+
+  let surface           = role("surface", neutral_h, neutral_c, surface_tone) in
+  let on_surface        = role("onSurface", neutral_h, neutral_c, on_surface_tone) in
+  let surface_variant   = role("surfaceVariant", neutral_variant_h, neutral_variant_c, surface_var_tone) in
+  let on_surface_variant = role("onSurfaceVariant", neutral_variant_h, neutral_variant_c, on_surface_var_tone) in
+  let outline           = role("outline", neutral_variant_h, neutral_variant_c, outline_tone) in
+
+  let error             = role("error", error_h, error_c, error_tone) in
+  let on_error          = role("onError", error_h, error_c, on_error_tone) in
+  let error_container   = role("errorContainer", error_h, error_c, error_container_tone) in
+  let on_error_container = role("onErrorContainer", error_h, error_c, on_error_cont_tone) in
+
+  {
+    seed_hue: h,
+    seed_chroma: seed_lch.c,
+    seed_tone: seed_lch.l,
+    primary: primary, on_primary: on_primary,
+    primary_container: primary_container, on_primary_container: on_primary_container,
+    secondary: secondary, on_secondary: on_secondary,
+    secondary_container: secondary_container, on_secondary_container: on_secondary_container,
+    tertiary: tertiary, on_tertiary: on_tertiary,
+    tertiary_container: tertiary_container, on_tertiary_container: on_tertiary_container,
+    surface: surface, on_surface: on_surface,
+    surface_variant: surface_variant, on_surface_variant: on_surface_variant,
+    outline: outline,
+    error: error, on_error: on_error,
+    error_container: error_container, on_error_container: on_error_container,
+    pairs: [
+      { fg: on_primary, bg: primary },
+      { fg: on_primary_container, bg: primary_container },
+      { fg: on_secondary, bg: secondary },
+      { fg: on_secondary_container, bg: secondary_container },
+      { fg: on_tertiary, bg: tertiary },
+      { fg: on_tertiary_container, bg: tertiary_container },
+      { fg: on_surface, bg: surface },
+      { fg: on_surface_variant, bg: surface_variant },
+      { fg: on_error, bg: error },
+      { fg: on_error_container, bg: error_container }
+    ]
+  }
+}
+
+// Contrast ratio for a {fg, bg} pair (each a role record with .rgb).
+fn pair_contrast(p) {
+  wcag.contrast_ratio(p.fg.rgb, p.bg.rgb)
+}
+
+// True if every pair in the scheme meets WCAG AA (>= 4.5).
+fn all_pairs_aa(scheme) {
+  list.fold(scheme.pairs, true, fn(acc, p) {
+    acc && pair_contrast(p) >= 4.5
+  })
+}
+
+{
+  tone_rgb:        tone_rgb,
+  role:            role,
+  build_scheme:    build_scheme,
+  pair_contrast:   pair_contrast,
+  all_pairs_aa:    all_pairs_aa
+}
