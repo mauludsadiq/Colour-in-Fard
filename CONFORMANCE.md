@@ -30,6 +30,7 @@ load it directly and iterate.
 | WASM (cfcolor-wasm) | cf_id, round3 | test_wasm.mjs against compiled module |
 | Swift (CFColor) | cf_id, round3, 3-digit hex | swift test (6 tests) |
 | C++ (cfcolor) | cf_id, round3, 3-digit hex | ctest (13 checks) |
+| Go (cfcolor) | cf_id, round3, 3-digit hex | go test (6 tests) |
 
 The `round3_vectors.cases` entry `{-86.183 -> -86.182}` is the single most
 important case in the file: it's the one place where a "reasonable"

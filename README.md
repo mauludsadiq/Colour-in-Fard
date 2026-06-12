@@ -10,7 +10,7 @@ independent cross-language implementations, and a full pipeline from
 images and seed colours to accessible, exportable, tamper-evident design
 systems.
 
-Written entirely in FARD -- 10,414 lines, 385 tests, zero failures, no FFI,
+Written entirely in FARD -- 10,458 lines, 386 tests, zero failures, no FFI,
 no external libraries.
 
 ---
@@ -161,7 +161,7 @@ Embed CF-ID directly into image and design files:
 
 ## Surfaces
 
-CF-ID is reachable from ten independent surfaces, all verified against the
+CF-ID is reachable from eleven independent surfaces, all verified against the
 same conformance suite (conformance/vectors.json):
 
 | Surface | Language | Use |
@@ -176,9 +176,10 @@ same conformance suite (conformance/vectors.json):
 | CFColor (Swift) | Swift | zero 3rd-party deps (CryptoKit), SPM package |
 | cfcolor (C++) | C++17 | header-only, zero deps, embeddable via C ABI |
 | cfcolor (Kotlin) | Kotlin | zero 3rd-party deps (java.security.MessageDigest), CLI |
+| cfcolor (Go) | Go | zero deps (crypto/sha256), CLI |
 
-Eight independent implementations (FARD, Python, Rust, TypeScript, WASM,
-Swift, C++, Kotlin) all agree on every conformance vector.
+Nine independent implementations (FARD, Python, Rust, TypeScript, WASM,
+Swift, C++, Kotlin, Go) all agree on every conformance vector.
 
     from cfcolor import from_hex
     from_hex("#7B3F00")   # "CF-7B3F00-EA262463"
@@ -193,7 +194,7 @@ Over a million colours, each resolvable at a predictable URL:
     https://mauludsadiq.github.io/Colour-in-Fard/registry/shards/cc.ndjson
 
 CF-CC0000-791976F7 is not a local label -- it's a resolvable, verifiable
-identity, computable offline by anyone, in any of the ten surfaces above.
+identity, computable offline by anyone, in any of the eleven surfaces above.
 
 ---
 
@@ -296,8 +297,8 @@ non-breaking for consumers that don't know about CF-ID.
     figma-plugin/                    -- Figma plugin (JS)
     vscode-extension/                -- VS Code extension (JS)
     cfid_py/                         -- Python reference implementation (PyPI: cfcolor)
-    cfid_rs/, cfid_ts/, cfid_wasm/, cfid_swift/, cfid_cpp/, cfid_kotlin/
-                                     -- Rust/TypeScript/WASM/Swift/C++/Kotlin ports
+    cfid_rs/, cfid_ts/, cfid_wasm/, cfid_swift/, cfid_cpp/, cfid_kotlin/, cfid_go/
+                                     -- Rust/TypeScript/WASM/Swift/C++/Kotlin/Go ports
     docs/registry/                   -- CF Registry (static, GitHub Pages)
     docs/viewer.html                 -- live web viewer
     docs/embedding/                  -- file format embedding examples
@@ -310,11 +311,11 @@ non-breaking for consumers that don't know about CF-ID.
 
 ## Validation
 
-385 tests, 0 failures, including:
+386 tests, 0 failures, including:
 
 - All 6 Sharma 2005 CIEDE2000 canonical pairs, exact
-- All 7 SPEC-2.0.0 CF-ID test vectors, exact, across all eight independent
-  implementations (FARD, Python, Rust, TypeScript, WASM, Swift, C++, Kotlin)
+- All 7 SPEC-2.0.0 CF-ID test vectors, exact, across all nine independent
+  implementations (FARD, Python, Rust, TypeScript, WASM, Swift, C++, Kotlin, Go)
 - 40/40 CSS named colour corpus matched
 - OKLab roundtrips for all primaries
 - CMYK roundtrips for primaries and neutrals; ICC-calibrated CMYK verified
