@@ -1,0 +1,55 @@
+import("std/list") as list
+import("../core/rgb_lab") as lab
+import("../core/cf_id") as cf
+
+// emotion_palette.fard -- CF-EMOLEX-1.0.0 colour anchors.
+// LCH anchors derived from Jonauskaite et al. (2020).
+
+fn anchors_lch() {
+  [
+    { id: 0,  l: 85.0, c: 65.0, h: 85.0  },
+    { id: 1,  l: 55.0, c: 5.0,  h: 200.0 },
+    { id: 2,  l: 65.0, c: 30.0, h: 220.0 },
+    { id: 3,  l: 55.0, c: 55.0, h: 355.0 },
+    { id: 4,  l: 70.0, c: 45.0, h: 140.0 },
+    { id: 5,  l: 55.0, c: 75.0, h: 35.0  },
+    { id: 6,  l: 60.0, c: 40.0, h: 60.0  },
+    { id: 7,  l: 35.0, c: 30.0, h: 280.0 },
+    { id: 8,  l: 75.0, c: 20.0, h: 160.0 },
+    { id: 9,  l: 60.0, c: 50.0, h: 195.0 },
+    { id: 10, l: 30.0, c: 5.0,  h: 220.0 },
+    { id: 11, l: 55.0, c: 8.0,  h: 85.0  },
+    { id: 12, l: 50.0, c: 25.0, h: 300.0 },
+    { id: 13, l: 40.0, c: 65.0, h: 25.0  },
+    { id: 14, l: 25.0, c: 20.0, h: 270.0 },
+    { id: 15, l: 35.0, c: 20.0, h: 240.0 },
+    { id: 16, l: 40.0, c: 35.0, h: 145.0 },
+    { id: 17, l: 35.0, c: 30.0, h: 100.0 },
+    { id: 18, l: 30.0, c: 25.0, h: 10.0  },
+    { id: 19, l: 45.0, c: 45.0, h: 320.0 }
+  ]
+}
+
+fn anchor_colour(emotion_id) {
+  let anc = list.get(anchors_lch(), emotion_id) in
+  let lch = { l: anc.l, c: anc.c, h: anc.h } in
+  let rgb = lab.lch_to_rgb(lch) in
+  let entry = cf.make_entry(rgb) in
+  {
+    emotion_id: emotion_id,
+    lch:        lch,
+    hex:        entry.hex,
+    cf_id:      entry.cf_id,
+    lab:        entry.lab
+  }
+}
+
+fn all_anchors() {
+  list.build(20, fn(i) { anchor_colour(i) })
+}
+
+{
+  anchors_lch:   anchors_lch,
+  anchor_colour: anchor_colour,
+  all_anchors:   all_anchors
+}

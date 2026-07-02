@@ -1,0 +1,106 @@
+import("std/list") as list
+import("std/str") as str
+import("../emotion/emotion_lexicon") as lex
+import("../emotion/emotion_ids") as eid
+
+// emotion_profile.fard -- text to emotion histogram.
+//
+// Takes a text string, tokenizes it, looks up each word in the lexicon,
+// and returns a histogram over the 20 CF emotion classes.
+
+fn tokenize(text) {
+  // Split on spaces, lowercase, strip basic punctuation
+  let words = str.split(str.lower(text), " ") in
+  list.filter(
+    list.map(words, fn(w) {
+      let trimmed = str.trim(w) in
+      // Strip trailing punctuation characters by checking last char
+      let n = str.len(trimmed) in
+      if n == 0 then ""
+      else
+        let last = str.char_at(trimmed, n - 1) in
+        if last == "." || last == "," || last == "!" || last == "?" ||
+           last == ":" || last == ";" || last == ")" || last == "(" then
+          str.slice(trimmed, 0, n - 1)
+        else trimmed
+    }),
+    fn(w) { str.len(w) > 0 }
+  )
+}
+
+fn empty_counts() {
+  list.build(20, fn(_) { 0 })
+}
+
+fn increment_counts(counts, id) {
+  list.build(20, fn(i) {
+    if i == id then list.get(counts, i) + 1
+    else list.get(counts, i)
+  })
+}
+
+fn emotion_profile(text) {
+  let tokens = tokenize(text) in
+  let n_tokens = list.len(tokens) in
+  let result = list.fold(tokens,
+    { counts: empty_counts(), scored: 0 },
+    fn(acc, word) {
+      let r = lex.lookup(word) in
+      if r.found then
+        { counts: increment_counts(acc.counts, r.emotion_id), scored: acc.scored + 1 }
+      else
+        { counts: increment_counts(acc.counts, 1), scored: acc.scored }
+    }
+  ) in
+  let counts = result.counts in
+  // Find dominant emotion (highest count, ties broken by lower id)
+  let dominant = list.fold(
+    list.build(20, fn(i) { { id: i, count: list.get(counts, i) } }),
+    { id: 1, count: 0 },
+    fn(best, e) {
+      if e.count > best.count then e else best
+    }
+  ) in
+  {
+    token_count:       n_tokens,
+    scored_count:      result.scored,
+    counts:            counts,
+    dominant_id:       dominant.id,
+    dominant_name:     eid.emotion_name(dominant.id),
+    dominant_count:    dominant.count,
+    lexicon_version:   lex.lexicon_version()
+  }
+}
+
+fn profile_summary(profile) {
+  // Return top 5 emotions with nonzero counts, sorted by count
+  let indexed = list.build(20, fn(i) {
+    { id: i, count: list.get(profile.counts, i), name: eid.emotion_name(i) }
+  }) in
+  let nonzero = list.filter(indexed, fn(e) { e.count > 0 }) in
+  // Simple selection sort for top 5
+  let pick_best = fn(remaining) {
+    list.fold(remaining, { id: 1, count: -1, name: "" }, fn(best, e) {
+      if e.count > best.count then e else best
+    })
+  } in
+  let top1 = pick_best(nonzero) in
+  let rest1 = list.filter(nonzero, fn(e) { e.id != top1.id }) in
+  let top2 = pick_best(rest1) in
+  let rest2 = list.filter(rest1, fn(e) { e.id != top2.id }) in
+  let top3 = pick_best(rest2) in
+  let rest3 = list.filter(rest2, fn(e) { e.id != top3.id }) in
+  let top4 = pick_best(rest3) in
+  let rest4 = list.filter(rest3, fn(e) { e.id != top4.id }) in
+  let top5 = pick_best(rest4) in
+  list.filter(
+    [top1, top2, top3, top4, top5],
+    fn(e) { e.count > 0 }
+  )
+}
+
+{
+  tokenize:        tokenize,
+  emotion_profile: emotion_profile,
+  profile_summary: profile_summary
+}

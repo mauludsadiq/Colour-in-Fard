@@ -1,0 +1,61 @@
+// emotion_ids.fard -- CF-EMOLEX-1.0.0 frozen emotion class definitions.
+//
+// 20 emotion classes with integer IDs, names, valence, and arousal.
+// IDs are FROZEN in version 1.0. Grounded in Russell (1980) circumplex.
+
+import("std/list") as list
+
+fn emotions() {
+  [
+    { id: 0,  name: "joy/beauty/delight",         valence: 1,  arousal: 1  },
+    { id: 1,  name: "neutral/factual/stable",      valence: 0,  arousal: 0  },
+    { id: 2,  name: "calm/friendliness",           valence: 1,  arousal: -1 },
+    { id: 3,  name: "affection/attraction",        valence: 1,  arousal: 0  },
+    { id: 4,  name: "hope/aspiration",             valence: 1,  arousal: 0  },
+    { id: 5,  name: "energy/excitement/courage",   valence: 1,  arousal: 1  },
+    { id: 6,  name: "care/gratitude/compassion",   valence: 1,  arousal: 0  },
+    { id: 7,  name: "achievement/esteem/prestige", valence: 1,  arousal: 0  },
+    { id: 8,  name: "relief/forgiveness/comfort",  valence: 1,  arousal: -1 },
+    { id: 9,  name: "curiosity/absorption",        valence: 1,  arousal: 1  },
+    { id: 10, name: "anonymity/hiddenness",        valence: 0,  arousal: -1 },
+    { id: 11, name: "boredom/dullness",            valence: -1, arousal: -1 },
+    { id: 12, name: "confusion/ambiguity",         valence: -1, arousal: 0  },
+    { id: 13, name: "anger/hostility/violation",   valence: -1, arousal: 1  },
+    { id: 14, name: "fear/threat",                 valence: -1, arousal: 1  },
+    { id: 15, name: "sadness/loss/damage",         valence: -1, arousal: -1 },
+    { id: 16, name: "envy/alienation/resentment",  valence: -1, arousal: 0  },
+    { id: 17, name: "disgust/abhorrence",          valence: -1, arousal: 1  },
+    { id: 18, name: "shame/disgrace",              valence: -1, arousal: 0  },
+    { id: 19, name: "anxiety/craving/agitation",   valence: -1, arousal: 1  }
+  ]
+}
+
+fn neutral_id() { 1 }
+
+fn emotion_by_id(id) {
+  list.get(emotions(), id)
+}
+
+fn emotion_name(id) {
+  list.get(emotions(), id).name
+}
+
+fn emotion_valence(id) {
+  list.get(emotions(), id).valence
+}
+
+fn emotion_arousal(id) {
+  list.get(emotions(), id).arousal
+}
+
+fn emotion_count() { 20 }
+
+{
+  emotions:        emotions,
+  neutral_id:      neutral_id,
+  emotion_by_id:   emotion_by_id,
+  emotion_name:    emotion_name,
+  emotion_valence: emotion_valence,
+  emotion_arousal: emotion_arousal,
+  emotion_count:   emotion_count
+}

@@ -1,0 +1,151 @@
+import("std/str") as str
+import("std/list") as list
+import("../src/emotion/emotion_ids") as eid
+import("../src/emotion/emotion_lexicon") as lex
+import("../src/emotion/emotion_profile") as ep
+import("../src/emotion/emotion_palette") as epal
+import("../src/emotion/emotion_theme") as et
+
+// --- emotion_ids tests ---
+
+test "emotion_count is 20" {
+  eid.emotion_count() == 20
+}
+
+test "emotion_by_id 0 is joy" {
+  str.contains(eid.emotion_name(0), "joy")
+}
+
+test "emotion_by_id 15 is sadness" {
+  str.contains(eid.emotion_name(15), "sadness")
+}
+
+test "emotion_by_id 1 is neutral" {
+  str.contains(eid.emotion_name(1), "neutral")
+}
+
+test "neutral_id is 1" {
+  eid.neutral_id() == 1
+}
+
+test "joy has positive valence" {
+  eid.emotion_valence(0) == 1
+}
+
+test "anger has negative valence" {
+  eid.emotion_valence(13) == -1
+}
+
+test "neutral has zero valence" {
+  eid.emotion_valence(1) == 0
+}
+
+// --- emotion_lexicon tests ---
+
+test "lexicon size is nonzero" {
+  lex.lexicon_size() > 0
+}
+
+test "lexicon version is CF-EMOLEX-1.0.0" {
+  lex.lexicon_version() == "CF-EMOLEX-1.0.0"
+}
+
+test "lookup joy returns id 0" {
+  lex.lookup("joy").emotion_id == 0
+}
+
+test "lookup abandoned returns id 15" {
+  lex.lookup("abandoned").emotion_id == 15
+}
+
+test "lookup fury returns id 13" {
+  lex.lookup("fury").emotion_id == 13
+}
+
+test "lookup hope returns id 4" {
+  lex.lookup("hope").emotion_id == 4
+}
+
+test "lookup grateful returns id 6" {
+  lex.lookup("grateful").emotion_id == 6
+}
+
+test "unknown word returns neutral" {
+  lex.lookup("xyzunknown").emotion_id == 1
+}
+
+test "unknown word found=false" {
+  lex.lookup("xyzunknown").found == false
+}
+
+test "known word found=true" {
+  lex.lookup("joy").found == true
+}
+
+test "lookup is case-insensitive" {
+  lex.lookup("JOY").emotion_id == lex.lookup("joy").emotion_id
+}
+
+// --- emotion_profile tests ---
+
+test "profile token count is correct" {
+  let p = ep.emotion_profile("sad and happy") in
+  p.token_count == 3
+}
+
+test "profile scores sad correctly" {
+  let p = ep.emotion_profile("sad lonely grief") in
+  list.get(p.counts, 15) == 3
+}
+
+test "profile dominant is correct" {
+  let p = ep.emotion_profile("sad sad sad joy") in
+  p.dominant_id == 15
+}
+
+test "profile scored_count is less than token_count for mixed text" {
+  let p = ep.emotion_profile("the and but or if") in
+  p.scored_count == 0
+}
+
+// --- emotion_palette tests ---
+
+test "anchor_colour returns a hex string" {
+  let a = epal.anchor_colour(0) in
+  str.len(a.hex) == 7
+}
+
+test "anchor_colour hex starts with hash" {
+  let a = epal.anchor_colour(0) in
+  str.starts_with(a.hex, "#")
+}
+
+test "all_anchors returns 20 entries" {
+  list.len(epal.all_anchors()) == 20
+}
+
+test "each anchor has a cf_id" {
+  let anchors = epal.all_anchors() in
+  list.fold(anchors, true, fn(ok, a) {
+    ok && str.len(a.cf_id) > 0
+  })
+}
+
+// --- emotion_theme tests ---
+
+test "palette_from_text returns k colours" {
+  let r = et.palette_from_text("joy sadness fear hope", 4) in
+  list.len(r.palette) == 4
+}
+
+test "palette_from_text dominant matches profile" {
+  let r = et.palette_from_text("sad sad sad sad joy", 3) in
+  r.profile.dominant_id == 15
+}
+
+test "palette hex values start with hash" {
+  let r = et.palette_from_text("joy sadness fear", 3) in
+  list.fold(r.palette, true, fn(ok, e) {
+    ok && str.starts_with(e.hex, "#")
+  })
+}

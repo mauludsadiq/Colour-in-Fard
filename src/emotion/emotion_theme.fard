@@ -1,0 +1,94 @@
+import("std/list") as list
+import("std/str") as str
+import("../emotion/emotion_palette") as ep
+import("../emotion/emotion_profile") as eprof
+import("../emotion/emotion_ids") as eid
+import("../core/cf_id") as cf
+import("../core/rgb_lab") as lab
+import("../core/wcag") as wcag
+
+// emotion_theme.fard -- derive a CF palette from an emotion profile.
+//
+// Takes the top k emotions by count and maps each to its anchor colour,
+// with L* adjustments for variety. Returns a standard Colour in FARD
+// palette with CF-IDs and WCAG contrast values.
+
+fn clamp(v, lo, hi) {
+  if v < lo then lo else if v > hi then hi else v
+}
+
+fn adjust_lch(lch, l_offset) {
+  let new_l = clamp(lch.l + l_offset, 10.0, 95.0) in
+  { l: new_l, c: lch.c, h: lch.h }
+}
+
+fn palette_from_profile(profile, k) {
+  // Get top k emotion IDs by count (excluding neutral unless dominant)
+  let all_indexed = list.build(20, fn(i) {
+    { id: i, count: list.get(profile.counts, i) }
+  }) in
+
+  // Pick top k by selection
+  let pick_best = fn(remaining) {
+    list.fold(remaining, { id: 1, count: -1 }, fn(best, e) {
+      if e.count > best.count then e else best
+    })
+  } in
+
+  let pick_n = fn(n) {
+    let r0 = all_indexed in
+    let b1 = pick_best(r0) in
+    let r1 = list.filter(r0, fn(e) { e.id != b1.id }) in
+    let b2 = pick_best(r1) in
+    let r2 = list.filter(r1, fn(e) { e.id != b2.id }) in
+    let b3 = pick_best(r2) in
+    let r3 = list.filter(r2, fn(e) { e.id != b3.id }) in
+    let b4 = pick_best(r3) in
+    let r4 = list.filter(r3, fn(e) { e.id != b4.id }) in
+    let b5 = pick_best(r4) in
+    let all5 = [b1, b2, b3, b4, b5] in
+    list.build(n, fn(i) { list.get(all5, i) })
+  } in
+
+  let safe_k = if k < 1 then 1 else if k > 5 then 5 else k in
+  let top = pick_n(safe_k) in
+
+  // L* offsets for variety: dominant stays at anchor, others shift
+  let offsets = [0.0, 8.0, -8.0, 12.0, -12.0] in
+
+  list.build(list.len(top), fn(i) {
+    let entry = list.get(top, i) in
+    let anchor = ep.anchor_colour(entry.id) in
+    let offset = list.get(offsets, i) in
+    let adj_lch = adjust_lch(anchor.lch, offset) in
+    let rgb = lab.lch_to_rgb(adj_lch) in
+    let colour = cf.make_entry(rgb) in
+    let contrast_white = wcag.contrast_ratio(rgb, { r: 1.0, g: 1.0, b: 1.0 }) in
+    {
+      rank:         i + 1,
+      emotion_id:   entry.id,
+      emotion_name: eid.emotion_name(entry.id),
+      emotion_count: entry.count,
+      hex:          colour.hex,
+      cf_id:        colour.cf_id,
+      lch:          adj_lch,
+      contrast_white: contrast_white
+    }
+  })
+}
+
+fn palette_from_text(text, k) {
+  let profile = eprof.emotion_profile(text) in
+  let palette = palette_from_profile(profile, k) in
+  {
+    text_preview:   str.slice(text, 0, 60),
+    profile:        profile,
+    palette:        palette,
+    lexicon_version: profile.lexicon_version
+  }
+}
+
+{
+  palette_from_profile: palette_from_profile,
+  palette_from_text:    palette_from_text
+}

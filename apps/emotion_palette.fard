@@ -1,0 +1,58 @@
+import("std/io") as io
+import("std/str") as str
+import("std/list") as list
+import("std/cli") as cli
+import("../src/emotion/emotion_theme") as et
+import("../src/emotion/emotion_profile") as ep
+import("../src/emotion/emotion_ids") as eid
+import("../src/core/wcag") as wcag
+
+// apps/emotion_palette.fard -- text to CF emotional palette.
+//
+// Usage:
+//   fardrun run --program apps/emotion_palette.fard --out <out> -- "your text here" [k]
+
+let args = cli.args() in
+let n = list.len(args) in
+
+if n < 1 then
+  io.println("usage: emotion_palette <text> [k]")
+else
+
+let text = list.get(args, 0) in
+let k_str = if n >= 2 then list.get(args, 1) else "4" in
+let k = if k_str == "3" then 3
+        else if k_str == "5" then 5
+        else 4 in
+
+let result = et.palette_from_text(text, k) in
+let profile = result.profile in
+
+let _ = io.println(str.concat(["text:     ", result.text_preview])) in
+let _ = io.println(str.concat(["tokens:   ", str.from_int(profile.token_count),
+  "  scored: ", str.from_int(profile.scored_count)])) in
+let _ = io.println(str.concat(["dominant: ", profile.dominant_name,
+  " (", str.from_int(profile.dominant_count), ")"])) in
+let _ = io.println(str.concat(["lexicon:  ", profile.lexicon_version])) in
+let _ = io.println("") in
+let _ = io.println(str.concat(["palette (k=", str.from_int(k), "):"])) in
+let _ = list.fold(result.palette, 0, fn(_, e) {
+  let wcag_str = str.concat(["contrast/white=",
+    str.slice(str.from_float(e.contrast_white), 0, 4)]) in
+  let _ = io.println(str.concat([
+    "  ", str.from_int(e.rank), ". ",
+    e.hex, "  ", e.cf_id, "  ",
+    e.emotion_name,
+    "  ", wcag_str
+  ])) in
+  0
+}) in
+let _ = io.println("") in
+let _ = io.println("emotion profile:") in
+let summary = ep.profile_summary(profile) in
+list.fold(summary, 0, fn(_, e) {
+  let _ = io.println(str.concat([
+    "  ", e.name, ": ", str.from_int(e.count)
+  ])) in
+  0
+})
