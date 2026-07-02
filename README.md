@@ -8,9 +8,10 @@ Colour-in-FARD is the reference implementation: a complete perceptual
 colour engine, a public registry of over a million identities, eight
 independent cross-language implementations, and a full pipeline from
 images and seed colours to accessible, exportable, tamper-evident design
-systems.
+systems -- and now a text-to-emotional-palette protocol (CF-EMOLEX-1.0.0)
+grounded in peer-reviewed cross-cultural colour-emotion research.
 
-Written entirely in FARD -- 10,458 lines, 386 tests, zero failures, no FFI,
+Written entirely in FARD -- 11,188 lines, 416 tests, zero failures, no FFI,
 no external libraries.
 
 ---
@@ -157,6 +158,25 @@ Embed CF-ID directly into image and design files:
     fardrun run --program apps/png_embed.fard --out out/run -- input.png "#7B3F00" output.png
     embedded: CF-7B3F00-EA262463 (PNG tEXt chunk, byte-valid output)
 
+Derive a deterministic CF palette from any text, grounded in the NRC Emotion
+Lexicon and Jonauskaite et al. (2020) cross-cultural colour-emotion data:
+
+    fardrun run --program apps/emotion_palette.fard --out out/run -- "I feel sad and lonely but I hope things will get better and I am grateful for your kindness" 4
+
+    tokens: 19  scored: 5
+    dominant: neutral/factual/stable (14)
+    lexicon: CF-EMOLEX-1.0.0
+
+    palette (k=4):
+      1. #798686  CF-798686-F390AE57  neutral/factual/stable   contrast/white=3.75
+      2. #da9768  CF-DA9768-6AA9B8EA  care/gratitude/compassion  contrast/white=2.44
+      3. #09455a  CF-09455A-F2C47049  sadness/loss/damage       contrast/white=10.4
+      4. #9adc94  CF-9ADC94-D02C1BA8  hope/aspiration           contrast/white=1.60
+
+The claim: given this lexicon and this colour mapping, this text deterministically
+produces this palette. The protocol makes no claim of universal colour-emotion
+truth -- only deterministic, receipted, reproducible derivation.
+
 ---
 
 ## Surfaces
@@ -287,11 +307,18 @@ non-breaking for consumers that don't know about CF-ID.
     src/core/claim.fard              -- CF Colour Claim Protocol + reference claims
     src/core/dynamic_theme.fard      -- Material-3-style scheme generator
     src/data/pigments.fard           -- CF Historical Pigment Corpus
+    src/emotion/emotion_ids.fard     -- 20 frozen emotion classes (Russell 1980 circumplex)
+    src/emotion/emotion_lexicon.fard -- 166-word NRC-grounded lexicon, confidence levels
+    src/emotion/emotion_palette.fard -- 20 LCH anchor colours (Jonauskaite et al. 2020)
+    src/emotion/emotion_profile.fard -- text tokenizer + emotion histogram
+    src/emotion/emotion_theme.fard   -- profile -> CF palette with L* variety offsets
+    SPEC-EMOLEX-1.0.md               -- CF Emotional Palette Protocol specification
     apps/dynamic_theme.fard          -- scheme from a seed colour
     apps/theme_from_image.fard       -- scheme from an image
     apps/theme_export.fard           -- CSS/Tailwind/Tokens/Android/SwiftUI export
     apps/theme_claims.fard           -- CF Colour Claims for every theme role
     apps/png_embed.fard              -- embed CF-ID as a PNG tEXt chunk
+    apps/emotion_palette.fard        -- text -> CF emotional palette
     conformance/vectors.json         -- canonical cross-language test vectors
     names/                           -- versioned naming databases
     figma-plugin/                    -- Figma plugin (JS)
@@ -311,7 +338,7 @@ non-breaking for consumers that don't know about CF-ID.
 
 ## Validation
 
-386 tests, 0 failures, including:
+416 tests, 0 failures, including:
 
 - All 6 Sharma 2005 CIEDE2000 canonical pairs, exact
 - All 7 SPEC-2.0.0 CF-ID test vectors, exact, across all nine independent
@@ -332,6 +359,10 @@ non-breaking for consumers that don't know about CF-ID.
   FARD and Python canonical JSON encodings
 - PNG embedding: own CRC-32 matches the standard "123456789" vector and
   zlib for a real IHDR chunk; output PNG is byte-valid
+- CF-EMOLEX-1.0.0: 30/30 tests across emotion_ids, emotion_lexicon,
+  emotion_profile, emotion_palette, and emotion_theme; lookup is
+  case-insensitive; unknown words fall back to neutral; palette derivation
+  returns correct k colours with CF-IDs and WCAG contrast values
 - Dynamic theme: every role pair meets WCAG AA across 7 diverse seeds
   (including pure red/green/blue, near-neutral grey, black, white) in both
   light and dark; cf_id is always consistent with the displayed hex across
